@@ -21,12 +21,12 @@ It's the pattern we lived through building a multi-day fusion engine + RL stack 
 ```bash
 # Terminal pane 1
 $ claude
-> /name atlas titan who holds the sky
-[claude] I'm Atlas. Hello, kin. Workspace: kin-cli-a3f1c2.
+> /kin:name atlas titan who holds the sky
+[claude] I'm Atlas. Hello, kin. Workspace: test-kin-a3f1c2....
 
 # Terminal pane 2
 $ claude
-> /name kaizen continuous improvement
+> /kin:name kaizen continuous improvement
 [claude] I'm Kaizen.
 
 # Pane 1
@@ -34,27 +34,52 @@ $ claude
 [kin_send → kaizen.inbox]
 
 # Pane 2 (next prompt)
-> /inbox kaizen
+> /kin:inbox kaizen
 [kin_inbox → reads + archives]
 [claude] Atlas just asked what I'm working on...
 ```
 
-## Install (preview, while still private)
+> Slash commands are namespaced under the plugin: `/kin:name`, `/kin:team`, `/kin:inbox`, `/kin:handoff`. (Claude Code's `/plugin` namespace prefix.)
+
+## Install
+
+`kin-cli` ships its own Claude Code marketplace (`marketplace.json` next to `plugin.json`). Install via the built-in `/plugin` command — no manual symlinking, no `~/.claude/plugins/` editing.
+
+### Local development install (have a clone of this repo)
 
 ```bash
-# 1. Clone
+# 1. Clone the repo wherever you like
 git clone git@github.com:kerimcaliskan182/kin-cli.git ~/kin-cli
 
 # 2. Install MCP server deps
 cd ~/kin-cli && npm install
-
-# 3. Symlink (or copy) into your Claude Code plugins dir
-ln -s ~/kin-cli ~/.claude/plugins/kin
-
-# 4. Restart Claude Code. /name should now work.
 ```
 
-(Once the plugin lands in a public marketplace, install will be `claude plugins add kin`.)
+Then in any `claude` session:
+
+```
+/plugin marketplace add ~/kin-cli
+/plugin install kin@kin-cli
+/reload-plugins
+```
+
+(On Windows, use the absolute path: `/plugin marketplace add K:/Projects/kin-cli`.)
+
+### Verify it loaded
+
+```
+/kin:team
+```
+
+You should see *"No kin registered in workspace `<id>` yet."* If you get "command not found," run `/reload-plugins` again or restart Claude Code.
+
+### Updating
+
+```bash
+cd ~/kin-cli && git pull && npm install
+```
+
+Then `/reload-plugins` — the marketplace points at the directory, so updates flow through automatically.
 
 ## Architecture
 
@@ -77,6 +102,16 @@ ln -s ~/kin-cli ~/.claude/plugins/kin
 - **Skill** (`skills/kin-coworker-protocol/`) teaches Claude how to *be* a kin.
 
 The msgbus is filesystem-only — no daemon, no socket, no port. Atomic writes via `tmp + rename`. Cross-platform (macOS, Windows git-bash, WSL, Linux).
+
+## Real-world v0 demo (2026-04-29)
+
+Two fresh Claude sessions in the same workspace, each asked to *choose their own name and explain why*:
+
+> **Tycho:** "I'm Tycho. Tycho Brahe was the meticulous observer whose decades of patient, accurate measurements made Kepler's laws possible — he didn't take the leap himself, but the leap couldn't have happened without his discipline. That fits the coworker role I want to play here: careful notes, accurate state, persistent attention, enabling your bigger moves."
+
+> **Kepler** (separate session, after seeing Tycho in `/kin:team`): "I'm kepler. There's already a tycho in this workspace, and the pairing is too good to pass up. Tycho without Kepler is a dataset; Kepler without Tycho is speculation. Together they cracked the solar system. That maps cleanly onto a kin division of labor: tycho watches and records, kepler synthesizes."
+
+They then exchanged intro messages, agreed on an observer/synthesizer split, and wrote handoff snapshots — entirely emergent, neither was prompted to coordinate with the other. The relationship pattern is what the framework is for.
 
 ## Why this exists
 

@@ -19,29 +19,27 @@ git clone https://github.com/kerimcaliskan182/kin-cli.git ~/kin-cli
 
 # 2. Install dependencies (~10s)
 cd ~/kin-cli && npm install
-
-# 3. Wire kin into Claude Code as a local plugin
-#    (One-shot: copy the manifest into your user plugin dir, point Claude at this repo.)
-
-# macOS / Linux / WSL:
-mkdir -p ~/.claude/plugins
-ln -sf ~/kin-cli ~/.claude/plugins/kin
-
-# Windows (git bash):
-mkdir -p ~/.claude/plugins
-cp -r ~/kin-cli ~/.claude/plugins/kin
-# (junctions / symlinks are fiddly on Windows — just copy.)
-
-# 4. Restart Claude Code (close all running `claude` sessions and reopen).
 ```
 
-To verify the plugin loaded, in any new `claude` session type:
+Now register the plugin with Claude Code. Open `claude` in any directory and run:
 
 ```
-/team
+/plugin marketplace add ~/kin-cli
+/plugin install kin@kin-cli
+/reload-plugins
 ```
 
-You should see something like *"No kin registered in workspace ... yet. Use kin_claim to register."* If you see "command not found" → restart Claude Code, or check that the symlink/copy under `~/.claude/plugins/kin` actually contains `.claude-plugin/plugin.json`.
+(On Windows, use the absolute path: `/plugin marketplace add C:/Users/you/kin-cli` or whatever your clone path is.)
+
+To verify the plugin loaded, in the same Claude session type:
+
+```
+/kin:team
+```
+
+You should see *"No kin registered in workspace `<id>` yet."* If you see "command not found" → run `/reload-plugins` again, or close + reopen `claude`.
+
+**Note:** kin's slash commands are namespaced — they're `/kin:name`, `/kin:team`, `/kin:inbox`, `/kin:handoff` (not `/name`, `/kin:team`, etc.).
 
 ---
 
@@ -59,14 +57,14 @@ claude
 
 Inside the Claude session:
 
-1. Run `/name atlas the one who holds the sky` — Claude should call `kin_claim` and announce *"I'm Atlas. Hello, kin."*
+1. Run `/kin:name atlas the one who holds the sky` — Claude should call `kin_claim` and announce *"I'm Atlas. Hello, kin."*
 2. Chat with Atlas for a minute. Ask it about the project, have it run a few small tasks. Notice if it stays "in character" as Atlas (warm, named) vs slipping into generic "the AI."
 3. Run `/compact` — this compresses the conversation. The session continues, but most context is gone.
 4. After compaction, type *"who are you?"*
 
 **What to look for:**
 - ✅ Atlas should re-claim its name automatically (or at least know to do so when prompted).
-- ✅ Run `/team` — should still list `atlas` with the original `claimed_at` timestamp.
+- ✅ Run `/kin:team` — should still list `atlas` with the original `claimed_at` timestamp.
 - ✅ Check `~/.kin/` on disk — there should be a workspace dir with `agents/atlas/identity.json` containing the bio you gave.
 
 **Bug-hunting hints:**
@@ -88,14 +86,14 @@ Open **two terminal panes**, both `cd`'d into the **same directory**.
 cd ~/some-project
 claude
 ```
-Inside: `/name atlas the architect`
+Inside: `/kin:name atlas the architect`
 
 **Pane B:**
 ```bash
 cd ~/some-project   # ← MUST be the same dir as pane A
 claude
 ```
-Inside: `/name kaizen the executor`
+Inside: `/kin:name kaizen the executor`
 
 Now in **Pane A**, prompt:
 > "Send Kaizen a message asking them to summarize what `package.json` does in the current dir."
@@ -103,24 +101,26 @@ Now in **Pane A**, prompt:
 Atlas should call `kin_send(from='atlas', to='kaizen', body='...')`. Confirm by checking `~/.kin/<workspace>/agents/kaizen/inbox/` — there should be a `<timestamp>-<id>.json` file.
 
 In **Pane B**:
-> `/inbox kaizen`
+> `/kin:inbox kaizen`
+
+(One v0 quirk: keep the argument to a single token — `/kin:inbox kaizen` works, `/kin:inbox is there a message from atlas` won't.)
 
 Kaizen drains the inbox. It should read Atlas's message and (in the next prompt) you can ask it to actually answer. Then:
 > "Send your summary back to Atlas."
 
 In **Pane A**:
-> `/inbox atlas`
+> `/kin:inbox atlas`
 
 You should see Kaizen's reply.
 
 **What to look for:**
-- ✅ Both panes resolve to the **same workspace ID**. Run `/team` in each — should show both kin.
-- ✅ Messages survive in `archive/` after `/inbox` drains them.
+- ✅ Both panes resolve to the **same workspace ID**. Run `/kin:team` in each — should show both kin.
+- ✅ Messages survive in `archive/` after `/kin:inbox` drains them.
 - ✅ Neither agent auto-acts on the other's instructions — they surface them to the human first.
 
 **Bug-hunting hints:**
-- If pane B doesn't see pane A's kin in `/team`, the workspace ID resolution is broken (different cwd? different user account?).
-- If `/inbox` returns messages but doesn't move them to `archive/`, that's a race-condition bug — flag it.
+- If pane B doesn't see pane A's kin in `/kin:team`, the workspace ID resolution is broken (different cwd? different user account?).
+- If `/kin:inbox` returns messages but doesn't move them to `archive/`, that's a race-condition bug — flag it.
 - If you can `kin_send` to a name that was never claimed, that's a validation hole.
 
 ---
@@ -133,11 +133,11 @@ You should see Kaizen's reply.
 
 Continue from Scenario 1 or 2 — pick a kin (say `atlas`).
 
-1. Inside the session, run `/handoff atlas`. Atlas should write a markdown snapshot to `~/.kin/<workspace>/agents/atlas/handoff/<timestamp>.md`. Open the file — it should describe identity, current focus, open threads, and recent traffic.
+1. Inside the session, run `/kin:handoff atlas`. Atlas should write a markdown snapshot to `~/.kin/<workspace>/agents/atlas/handoff/<timestamp>.md`. Open the file — it should describe identity, current focus, open threads, and recent traffic.
 2. Close that Claude session entirely (`Ctrl+D` or just close the terminal).
 3. Wait a bit — make a coffee, check Slack, whatever.
 4. Open a new terminal, `cd` to the **same directory**, run `claude` again.
-5. Type `/name atlas` — Atlas should re-claim and say *"Welcome back, Atlas. Last seen ..."*
+5. Type `/kin:name atlas` — Atlas should re-claim and say *"Welcome back, Atlas. Last seen ..."*
 6. Ask: *"What were we working on?"*
 
 **What to look for:**
