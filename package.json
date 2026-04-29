@@ -1,0 +1,37 @@
+{
+  "name": "kin-cli",
+  "version": "0.0.1",
+  "description": "A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory. Claude Code plugin.",
+  "type": "module",
+  "main": "mcp/server.mjs",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node mcp/server.mjs",
+    "test": "node --test test/*.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "ai-agents",
+    "multi-agent",
+    "mcp",
+    "plugin",
+    "memory",
+    "msgbus",
+    "persistent-identity"
+  ],
+  "author": "Kerim Çalışkan <kerimcaliskan12@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kerimcaliskan182/kin-cli.git"
+  },
+  "homepage": "https://github.com/kerimcaliskan182/kin-cli#readme",
+  "bugs": "https://github.com/kerimcaliskan182/kin-cli/issues"
+}

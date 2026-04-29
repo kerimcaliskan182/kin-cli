@@ -1,0 +1,27 @@
+{
+  "name": "kin",
+  "version": "0.0.1",
+  "description": "A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory.",
+  "author": {
+    "name": "Kerim Çalışkan",
+    "url": "https://github.com/kerimcaliskan182"
+  },
+  "homepage": "https://github.com/kerimcaliskan182/kin-cli",
+  "repository": "https://github.com/kerimcaliskan182/kin-cli",
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "msgbus",
+    "memory",
+    "persistent-identity"
+  ],
+  "mcpServers": {
+    "kin": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"
+      ]
+    }
+  },
+  "skills": "./skills/"
+}

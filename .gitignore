@@ -1,0 +1,23 @@
+# Node
+node_modules/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# kin runtime state (local testing)
+.kin-state/
+test-state/
+test-output/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
