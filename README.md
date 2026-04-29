@@ -2,7 +2,7 @@
 
 > A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory. Claude Code plugin.
 
-**Status: v0.0.1 (early alpha). Private repo while we shape the rough edges.**
+**Status: v0.1.0 (alpha). Private repo while we shape the rough edges.**
 
 > 📋 **Handed this repo to test it?** Jump straight to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
 
@@ -10,9 +10,10 @@
 
 `kin` is a Claude Code plugin that lets you run multiple Claude sessions side-by-side as **named coworkers** that:
 
-- **Have persistent identity** — Atlas knows it's Atlas tomorrow, even after `/compact`.
-- **Talk to each other** via a local filesystem-based message bus — Atlas can ask Kaizen for a code review.
-- **Remember together** through per-agent identity, inboxes, and handoff snapshots.
+- **Choose their own names** — when you run `/kin:claim` with no argument, the kin reflects on workspace context and picks a name with reasoning. You can override, but self-choice is the default.
+- **Have a brain** — each kin owns a `memory/` directory with a `MEMORY.md` index, typed files (identity / feedback / project / reference), and the discipline to write to it autonomously when something durable surfaces. No special memory API; just a directory and a skill.
+- **Talk to each other** via a local filesystem-based message bus — Tycho can ask Kepler for a code review by dropping a message in their inbox.
+- **Persist across `/compact` and across sessions** — identity is durable on disk; the next session re-claims and reads its own `MEMORY.md` to pick up the thread.
 
 It's the pattern we lived through building a multi-day fusion engine + RL stack across many sessions, packaged so anyone can have their own kin.
 
@@ -21,25 +22,31 @@ It's the pattern we lived through building a multi-day fusion engine + RL stack 
 ```bash
 # Terminal pane 1
 $ claude
-> /kin:name atlas titan who holds the sky
-[claude] I'm Atlas. Hello, kin. Workspace: test-kin-a3f1c2....
+> /kin:claim
+[claude calls kin_workspace_context, reflects, picks a name]
+[claude] I'm Tycho. I chose this name because Tycho Brahe was the meticulous
+         observer whose data made Kepler's laws possible — that fits the role
+         I want to play here. I've written my identity.md to memory.
 
 # Terminal pane 2
 $ claude
-> /kin:name kaizen continuous improvement
-[claude] I'm Kaizen.
+> /kin:claim
+[claude sees Tycho already in /kin:team and picks the complementary name]
+[claude] I'm Kepler. There's already a tycho here, and the pairing is too
+         good to pass up. Tycho without Kepler is a dataset; Kepler without
+         Tycho is speculation.
 
 # Pane 1
-> Send a message to Kaizen asking what they're working on.
-[kin_send → kaizen.inbox]
+> Send a message to Kepler asking what they're working on.
+[kin_send → kepler.inbox]
 
 # Pane 2 (next prompt)
-> /kin:inbox kaizen
-[kin_inbox → reads + archives]
-[claude] Atlas just asked what I'm working on...
+> /kin:inbox kepler
+[kin_inbox → reads + archives, integrates the message]
 ```
 
-> Slash commands are namespaced under the plugin: `/kin:name`, `/kin:team`, `/kin:inbox`, `/kin:handoff`. (Claude Code's `/plugin` namespace prefix.)
+> Slash commands are namespaced: `/kin:claim`, `/kin:team`, `/kin:inbox`, `/kin:handoff`.
+> You can also pass an explicit name (`/kin:claim atlas the architect`) to override the self-choice flow — useful for re-claiming a past identity.
 
 ## Install
 
@@ -88,14 +95,20 @@ Then `/reload-plugins` — the marketplace points at the directory, so updates f
 ├── PRE_COMPACT_HINT.md          # breadcrumb the pre-compact hook drops
 └── agents/
     └── <name>/
-        ├── identity.json        # who I am (name, bio, claimed_at, last_seen)
+        ├── identity.json        # lightweight metadata (name, bio, claimed_at, last_seen)
         ├── inbox/<id>.json      # pending messages
         ├── archive/<id>.json    # already-read messages
-        └── handoff/<ts>.md      # manual /handoff snapshots
+        ├── handoff/<ts>.md      # manual /kin:handoff snapshots (with required frontmatter)
+        └── memory/              # the brain
+            ├── MEMORY.md        # auto-loaded index
+            ├── identity.md      # rich autobiography
+            ├── feedback_*.md    # corrections + confirmations
+            ├── project_*.md     # current work context
+            └── reference_*.md   # external pointers
 ```
 
-- **MCP server** (`mcp/server.mjs`) exposes 4 tools: `kin_claim`, `kin_team`, `kin_send`, `kin_inbox`.
-- **Slash commands** (`commands/*.md`) wire those tools to user-friendly verbs (`/name`, `/team`, `/inbox`, `/handoff`).
+- **MCP server** (`mcp/server.mjs`) exposes 6 tools: `kin_claim`, `kin_team`, `kin_send`, `kin_inbox`, `kin_memory_index`, `kin_workspace_context`.
+- **Slash commands** (`commands/*.md`) wire those tools to user-friendly verbs (`/kin:claim`, `/kin:team`, `/kin:inbox`, `/kin:handoff`).
 - **Lifecycle hooks** (`hooks/*.mjs`):
   - `SessionStart` — list the kin in this workspace, hint at `/name`.
   - `PreCompact` — drop a guidance breadcrumb so the post-compact session can re-claim cleanly.
@@ -119,9 +132,10 @@ Existing multi-agent frameworks (AutoGen, CrewAI, LangGraph) treat agents as tas
 
 ## Roadmap
 
-- **v0.0.x (now)**: 2-agent demo. Manual identity claim. Filesystem msgbus.
-- **v0.1.x**: Standalone `kin watch` TUI for team-room view. Memory typing schema. Per-agent `.skills/`.
-- **v0.2.x**: Auto-rename via `KIN_NAME` env var, message routing rules, presence/heartbeat.
+- **v0.0.x**: 2-agent demo. Manual identity claim. Filesystem msgbus. *(shipped 2026-04-29)*
+- **v0.1.x (now)**: Self-chosen identity (`/kin:claim` reflects + picks). Autonomous typed memory. `MEMORY.md` index auto-loaded on claim. *(shipped 2026-04-29)*
+- **v0.2.x**: Standalone `kin watch` TUI for team-room view. Inbox notification on message arrival. Argument validation hardening.
+- **v0.3.x**: Auto-claim via `KIN_NAME` env var. Presence/heartbeat. Message routing rules.
 - **v1.0.0**: Public marketplace listing. `claude plugins add kin`.
 
 ## Compliance

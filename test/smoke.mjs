@@ -77,6 +77,50 @@ test("inbox round-trip: drop → list → archive", async () => {
   assert.equal(archived.length, 1);
 });
 
+test("memory scaffold creates dir + MEMORY.md if absent", async () => {
+  const dir = path.join(TMP_HOME, "memscaffold");
+  const mDir = path.join(dir, "memory");
+  await fs.mkdir(mDir, { recursive: true });
+  const indexPath = path.join(mDir, "MEMORY.md");
+  // Initially absent
+  let absent = false;
+  try {
+    await fs.access(indexPath);
+  } catch {
+    absent = true;
+  }
+  assert.ok(absent);
+  // Write template
+  await fs.writeFile(indexPath, `# tycho's Memory\n\n## Identity\n- (none yet)\n`);
+  const content = await fs.readFile(indexPath, "utf8");
+  assert.ok(content.includes("Identity"));
+  assert.ok(content.includes("tycho"));
+});
+
+test("memory dir layout: identity + typed files coexist with inbox/archive/handoff", async () => {
+  const agent = path.join(TMP_HOME, "memlayout", "agents", "atlas");
+  for (const sub of ["inbox", "archive", "handoff", "memory"]) {
+    await fs.mkdir(path.join(agent, sub), { recursive: true });
+  }
+  const stats = await Promise.all(
+    ["inbox", "archive", "handoff", "memory"].map((s) =>
+      fs.stat(path.join(agent, s))
+    )
+  );
+  for (const st of stats) {
+    assert.ok(st.isDirectory());
+  }
+  // identity.md and MEMORY.md should be writable in memory/
+  await fs.writeFile(path.join(agent, "memory", "identity.md"), "# Atlas\n");
+  await fs.writeFile(path.join(agent, "memory", "MEMORY.md"), "# index\n");
+  await fs.writeFile(
+    path.join(agent, "memory", "feedback_naming.md"),
+    "rule: self-chosen names\n"
+  );
+  const files = (await fs.readdir(path.join(agent, "memory"))).sort();
+  assert.deepEqual(files, ["MEMORY.md", "feedback_naming.md", "identity.md"]);
+});
+
 test("name regex allows lowercase + digits + dash + underscore", () => {
   const NAME_RE = /^[a-z][a-z0-9_-]{1,30}$/;
   assert.ok(NAME_RE.test("atlas"));

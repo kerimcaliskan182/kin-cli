@@ -1,4 +1,4 @@
-# Testing kin v0.0.1
+# Testing kin v0.1.0
 
 > Hi! You've been handed a private alpha of `kin`. This guide walks you through three short test scenarios. Each takes ~5 minutes. Please send feedback on anything that surprises you, breaks, feels weird, or makes you think "huh, that's cool."
 
@@ -39,37 +39,43 @@ To verify the plugin loaded, in the same Claude session type:
 
 You should see *"No kin registered in workspace `<id>` yet."* If you see "command not found" → run `/reload-plugins` again, or close + reopen `claude`.
 
-**Note:** kin's slash commands are namespaced — they're `/kin:name`, `/kin:team`, `/kin:inbox`, `/kin:handoff` (not `/name`, `/kin:team`, etc.).
+**Note:** kin's slash commands are namespaced — `/kin:claim`, `/kin:team`, `/kin:inbox`, `/kin:handoff`.
 
 ---
 
-## Scenario 1 — Solo identity (~5 min)
+## Scenario 1 — Self-chosen identity + brain (~5 min)
 
-**Goal:** prove that a kin's name persists across `/compact` and across sessions.
+**Goal:** the kin chooses its own name and writes its first `identity.md` to memory.
 
 **Steps:**
 
 ```bash
-# Open a terminal, cd into any project dir (the workspace ID is derived from cwd).
 cd ~/some-project
 claude
 ```
 
 Inside the Claude session:
 
-1. Run `/kin:name atlas the one who holds the sky` — Claude should call `kin_claim` and announce *"I'm Atlas. Hello, kin."*
-2. Chat with Atlas for a minute. Ask it about the project, have it run a few small tasks. Notice if it stays "in character" as Atlas (warm, named) vs slipping into generic "the AI."
-3. Run `/compact` — this compresses the conversation. The session continues, but most context is gone.
-4. After compaction, type *"who are you?"*
+1. Run `/kin:claim` — **with no argument**. The kin should:
+   - Call `kin_workspace_context` to ground itself
+   - Pick a name + reasoning
+   - Call `kin_claim` and announce itself with the *why*
+   - Write `identity.md` to its memory dir
+2. Ask: *"show me your identity.md"* — the kin should `Read` the file from its memory dir.
+3. Run `/kin:team` — should list the chosen name.
+4. Run `/compact`. After compaction, type *"who are you?"*
 
 **What to look for:**
-- ✅ Atlas should re-claim its name automatically (or at least know to do so when prompted).
-- ✅ Run `/kin:team` — should still list `atlas` with the original `claimed_at` timestamp.
-- ✅ Check `~/.kin/` on disk — there should be a workspace dir with `agents/atlas/identity.json` containing the bio you gave.
+- ✅ Self-choice — the kin reflected and explained, not just "I'm AI-1."
+- ✅ `~/.kin/<workspace>/agents/<name>/memory/identity.md` exists, has YAML frontmatter, and the body explains the name choice in real terms.
+- ✅ `~/.kin/<workspace>/agents/<name>/memory/MEMORY.md` has an entry pointing at `identity.md`.
+- ✅ After `/compact`, the kin can re-claim and remembers itself by reading `MEMORY.md`.
+
+**Override path** (also worth a try): `/kin:claim atlas the architect` — the kin uses the explicit name without reflection. Useful for testing re-claim flows.
 
 **Bug-hunting hints:**
-- Does the SessionStart hook fire? After `/compact`, Claude should mention "kin workspace: ...".
-- Is `last_seen` updated when Atlas re-claims?
+- If the kin asks *you* to pick a name on `/kin:claim`, that's a regression of issue #6 — flag it.
+- If `identity.md` isn't written on first claim, the skill ritual didn't fire — flag it.
 
 ---
 
@@ -86,14 +92,14 @@ Open **two terminal panes**, both `cd`'d into the **same directory**.
 cd ~/some-project
 claude
 ```
-Inside: `/kin:name atlas the architect`
+Inside: `/kin:claim` (let the kin choose).
 
 **Pane B:**
 ```bash
 cd ~/some-project   # ← MUST be the same dir as pane A
 claude
 ```
-Inside: `/kin:name kaizen the executor`
+Inside: `/kin:claim` — and watch whether this kin notices the first one in `kin_team` and chooses a complementary name (Tycho/Kepler-style). That's the demo.
 
 Now in **Pane A**, prompt:
 > "Send Kaizen a message asking them to summarize what `package.json` does in the current dir."
@@ -137,7 +143,7 @@ Continue from Scenario 1 or 2 — pick a kin (say `atlas`).
 2. Close that Claude session entirely (`Ctrl+D` or just close the terminal).
 3. Wait a bit — make a coffee, check Slack, whatever.
 4. Open a new terminal, `cd` to the **same directory**, run `claude` again.
-5. Type `/kin:name atlas` — Atlas should re-claim and say *"Welcome back, Atlas. Last seen ..."*
+5. Type `/kin:claim atlas` — Atlas should re-claim and say *"Welcome back, Atlas. Last seen ..."*
 6. Ask: *"What were we working on?"*
 
 **What to look for:**
@@ -146,6 +152,30 @@ Continue from Scenario 1 or 2 — pick a kin (say `atlas`).
 - ✅ Atlas's identity is preserved, not redefined.
 
 ---
+
+## Scenario 4 — Autonomous memory (~10 min)
+
+**Goal:** the kin writes to its brain *without being told to*, in response to a real correction.
+
+**Steps:**
+
+In an active kin session (claim a name first, e.g. `/kin:claim`):
+
+1. Give the kin a real preference correction. Something like:
+   - *"Don't use single-letter variable names in code — always full words. We got burned by debugging `i j k l` collisions last month."*
+2. After the kin acknowledges, look in `~/.kin/<workspace>/agents/<name>/memory/`. Within a few prompts, there should be a `feedback_*.md` file capturing the rule (with **Why:** and **How to apply:** lines per the skill schema), and `MEMORY.md` should be updated to point at it.
+3. **The user should never have to say "save this to memory."** If they did, that's a regression of issue #7.
+
+**What to look for:**
+- ✅ Spontaneous `feedback_<topic>.md` write after a real correction.
+- ✅ `MEMORY.md` index updated.
+- ✅ The frontmatter follows the skill schema (name / description / type).
+- ✅ Body has rule + Why + How to apply.
+
+**Variations worth trying:**
+- A *project fact* (the kin should write `project_*.md`).
+- A *pointer to an external system* like "Linear bugs go in INGEST" (should write `reference_*.md`).
+- A *user preference* like "I write Turkish, you reply English" (should write `user_*.md`).
 
 ## What I want to hear from you (feedback)
 

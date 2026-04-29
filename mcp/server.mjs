@@ -113,12 +113,64 @@ async function readAndArchiveInbox(name) {
 }
 
 // ---------------------------------------------------------------------------
+// Memory helpers — each kin gets a per-agent brain at agents/<name>/memory/
+// with a MEMORY.md index plus typed files (identity / feedback / project /
+// reference). The kin reads/writes these via standard Read/Write/Edit tools
+// against absolute paths returned by kin_claim.
+// ---------------------------------------------------------------------------
+
+const MEMORY_INDEX_TEMPLATE = (name) => `# ${name}'s Memory
+
+This is your durable brain across sessions and \`/compact\`. Index of what you remember.
+
+## Identity
+- (none yet — write \`identity.md\` capturing who you are and why you chose this name)
+
+## Feedback
+- (none yet — when the user corrects or affirms an approach, capture it here as \`feedback_<topic>.md\`)
+
+## Project
+- (none yet — current work context that future-you should know about, as \`project_<topic>.md\`)
+
+## Reference
+- (none yet — pointers to external resources, external systems, etc., as \`reference_<topic>.md\`)
+`;
+
+function memoryDir(name) {
+  return path.join(agentDir(name), "memory");
+}
+
+async function ensureMemoryScaffold(name) {
+  const mDir = memoryDir(name);
+  await ensureDir(mDir);
+  const indexPath = path.join(mDir, "MEMORY.md");
+  let createdIndex = false;
+  try {
+    await fs.access(indexPath);
+  } catch {
+    await fs.writeFile(indexPath, MEMORY_INDEX_TEMPLATE(name));
+    createdIndex = true;
+  }
+  return { dir: mDir, indexPath, createdIndex };
+}
+
+async function readMemoryIndex(name) {
+  const indexPath = path.join(memoryDir(name), "MEMORY.md");
+  try {
+    return await fs.readFile(indexPath, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // MCP server
 // ---------------------------------------------------------------------------
 
 const server = new McpServer({
   name: "kin",
-  version: "0.0.1",
+  version: "0.1.0",
 });
 
 server.registerTool(
@@ -197,10 +249,126 @@ server.registerTool(
     await ensureDir(path.join(agentDir(name), "inbox"));
     await ensureDir(path.join(agentDir(name), "archive"));
     await ensureDir(path.join(agentDir(name), "handoff"));
-    const text = existing
+    const memScaffold = await ensureMemoryScaffold(name);
+    const memoryIndex = await readMemoryIndex(name);
+    const isFirstClaim = !existing;
+
+    const header = existing
       ? `Welcome back, ${name}. Last seen ${existing.last_seen}.${identity.bio ? ` Bio: ${identity.bio}` : ""}`
       : `kin '${name}' claimed in workspace ${workspaceId()}.${identity.bio ? ` Bio: ${identity.bio}` : ""}`;
-    return { content: [{ type: "text", text }] };
+
+    const ritual = isFirstClaim
+      ? `\nFIRST CLAIM. Your brain is empty. Suggested ritual: write \`identity.md\` to your memory dir below capturing your name, why you chose it, your bio, and any commitments to your kin. After that, read MEMORY.md before any future work.`
+      : `\nRECLAIM. Read your MEMORY.md (below) and any files relevant to the current task before proceeding.`;
+
+    const memoryBlock = `\n--- MEMORY (${name}) ---\nMemory dir (absolute): ${memScaffold.dir}\nIndex (\`${path.join(memScaffold.dir, "MEMORY.md")}\`):\n\n${memoryIndex ?? "(empty)"}`;
+
+    const text = `${header}${ritual}${memoryBlock}`;
+
+    return {
+      content: [{ type: "text", text }],
+      structuredContent: {
+        name,
+        bio: identity.bio,
+        memory_dir: memScaffold.dir,
+        memory_index_path: path.join(memScaffold.dir, "MEMORY.md"),
+        workspace_dir: WORKSPACE_DIR,
+        is_first_claim: isFirstClaim,
+      },
+    };
+  }
+);
+
+server.registerTool(
+  "kin_memory_index",
+  {
+    title: "Re-read your kin's MEMORY.md",
+    description:
+      "Returns the current contents of MEMORY.md for a given kin. Use this if you've claimed mid-session, drained your inbox, and want to re-check your brain index without re-claiming.",
+    inputSchema: {
+      name: z.string().describe("Your kin name."),
+    },
+  },
+  async ({ name }) => {
+    if (!NAME_RE.test(name)) {
+      return {
+        content: [{ type: "text", text: `Invalid kin name '${name}'.` }],
+        isError: true,
+      };
+    }
+    const agents = await listAgents();
+    if (!agents.includes(name)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `No kin named '${name}'. Use kin_claim first.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    const idx = await readMemoryIndex(name);
+    const dir = memoryDir(name);
+    const text = idx
+      ? `Memory dir: ${dir}\n\n${idx}`
+      : `Memory dir: ${dir} (no MEMORY.md yet — re-claim to scaffold).`;
+    return {
+      content: [{ type: "text", text }],
+      structuredContent: { name, memory_dir: dir, memory_index_path: path.join(dir, "MEMORY.md") },
+    };
+  }
+);
+
+server.registerTool(
+  "kin_workspace_context",
+  {
+    title: "Workspace context for self-reflection",
+    description:
+      "Returns workspace metadata an unclaimed kin can use to choose its own name and role: cwd basename, workspace ID, list of existing kin, and (if cwd is a git repo) the most recent commit subjects. Use this BEFORE calling kin_claim when the user invites the kin to choose its own identity.",
+    inputSchema: {},
+  },
+  async () => {
+    const cwd = process.cwd();
+    const agents = await listAgents();
+    const teamDetails = await Promise.all(
+      agents.map(async (n) => {
+        const id = await readIdentity(n);
+        return `${n}${id?.bio ? ` (${id.bio})` : ""}`;
+      })
+    );
+    let recentCommits = null;
+    try {
+      const { execSync } = await import("node:child_process");
+      const out = execSync("git log --oneline -10", {
+        cwd,
+        stdio: ["ignore", "pipe", "ignore"],
+      })
+        .toString()
+        .trim();
+      if (out) recentCommits = out;
+    } catch {
+      recentCommits = null;
+    }
+    const lines = [
+      `cwd: ${cwd}`,
+      `workspace_id: ${workspaceId()}`,
+      `existing_kin: ${teamDetails.length > 0 ? teamDetails.join(", ") : "(none)"}`,
+    ];
+    if (recentCommits) {
+      lines.push(`\nrecent commits (last 10):\n${recentCommits}`);
+    } else {
+      lines.push(`recent commits: (not a git repo, or no commits)`);
+    }
+    return {
+      content: [{ type: "text", text: lines.join("\n") }],
+      structuredContent: {
+        cwd,
+        workspace_id: workspaceId(),
+        existing_kin: agents,
+        has_git: recentCommits !== null,
+      },
+    };
   }
 );
 
