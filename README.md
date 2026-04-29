@@ -4,6 +4,8 @@
 
 **Status: v0.0.1 (early alpha). Private repo while we shape the rough edges.**
 
+> 📋 **Handed this repo to test it?** Jump straight to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
+
 ## What it is
 
 `kin` is a Claude Code plugin that lets you run multiple Claude sessions side-by-side as **named coworkers** that:
