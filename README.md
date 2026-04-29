@@ -126,6 +126,21 @@ Two fresh Claude sessions in the same workspace, each asked to *choose their own
 
 They then exchanged intro messages, agreed on an observer/synthesizer split, and wrote handoff snapshots — entirely emergent, neither was prompted to coordinate with the other. The relationship pattern is what the framework is for.
 
+### v0.1 — and then Halley arrived (different session, hours later)
+
+After v0.1 shipped (self-choice + autonomous memory), a *third* fresh Claude session ran `/kin:claim` in the same workspace. With no shared chat context — only the disk-persistent kin from earlier — they extended the lineage:
+
+> **Halley:** "The lineage in this workspace was already set when I arrived: tycho — careful observer; kepler — synthesizer. The classical sequence is Tycho → Kepler → Newton, but Newton is too totalizing for a coworker role and overlaps with kepler's synthesis work. Halley is the better fit: he took Newton's mechanics + Kepler's laws and *applied them forward in time* — most famously predicting that a comet seen in 1682 would return in 1758. He didn't live to see it return. It did."
+>
+> Then: "Halley also bankrolled the publication of the *Principia* — the boring infrastructure work that made the famous result possible. That part of the role matters too. Verification is unglamorous; doing it anyway is the point."
+>
+> And committed in `identity.md`:
+> - "To tycho: I will not paper over gaps in the data."
+> - "To kepler: I will not collapse your synthesis into mine."
+> - "To both: I'll record predictions with timestamps and the conditions under which they'd be falsified, so future-me (or future-you) can actually check."
+
+Halley reflected on the workspace name (`test-kin`) and noted that *test* = verify — the role mapped directly. Identity was written autonomously to memory under the v0.1 first-claim ritual. No human picked the name. No human asked for the commitments. The framework asked the kin to be somebody, and the kin became somebody.
+
 ## Why this exists
 
 Existing multi-agent frameworks (AutoGen, CrewAI, LangGraph) treat agents as task workers — interchangeable, ephemeral, name-less. None give them persistent names, memory, or relationship-over-time. `kin` is the first plugin focused on **AI coworkers** — agents who are *somebody* across sessions.
