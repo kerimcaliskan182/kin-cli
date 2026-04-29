@@ -170,7 +170,7 @@ async function readMemoryIndex(name) {
 
 const server = new McpServer({
   name: "kin",
-  version: "0.1.0",
+  version: "0.1.1",
 });
 
 server.registerTool(
@@ -386,6 +386,28 @@ server.registerTool(
     },
   },
   async ({ from, to, body, topic }) => {
+    if (!NAME_RE.test(from)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid sender name '${from}'. Kin names must be a single token (lowercase, 2-31 chars, [a-z0-9_-], starts with a letter).`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    if (!NAME_RE.test(to)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid recipient name '${to}'. Kin names must be a single token (lowercase, 2-31 chars, [a-z0-9_-], starts with a letter).`,
+          },
+        ],
+        isError: true,
+      };
+    }
     const agents = await listAgents();
     if (!agents.includes(from)) {
       return {
@@ -434,6 +456,17 @@ server.registerTool(
     },
   },
   async ({ name }) => {
+    if (!NAME_RE.test(name)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Invalid kin name '${name}'. Kin names must be a single token (lowercase, 2-31 chars, [a-z0-9_-], starts with a letter). Did you pass a multi-word phrase by mistake?`,
+          },
+        ],
+        isError: true,
+      };
+    }
     const agents = await listAgents();
     if (!agents.includes(name)) {
       return {

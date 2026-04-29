@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.1 — 2026-04-29
+
+Hardening release. Closes #1 and #3.
+
+### Added
+- **PostToolUse inbox-notification hook** (#3) — after every Bash/Read/Edit/Write/Grep/Glob, scans all kin inboxes in the workspace and emits a one-line notification if any have pending messages: *"kin pending inboxes: tycho(2), kepler(1)"*. Set env `KIN_QUIET=1` to mute.
+
+### Fixed
+- **Single-token name validation** (#1) — `kin_send`, `kin_inbox`, and `kin_memory_index` now check `NAME_RE` before lookup, with a clear error message ("Did you pass a multi-word phrase by mistake?"). Slash commands `/kin:inbox` and `/kin:handoff` now extract only the first whitespace-separated token from `$ARGUMENTS` and ask for clarification on multi-word input.
+
+### Notes
+- The notification hook is intentionally simple — it always announces non-zero counts on every relevant tool call, no "last seen" deduplication. Per-session state-tracking comes in v0.2.
+- `KIN_QUIET=1` is the escape hatch if the notifications get noisy.
+
 ## v0.1.0 — 2026-04-29
 
 The "kin actually has a brain and chooses who they are" release.

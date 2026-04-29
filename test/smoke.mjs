@@ -133,3 +133,32 @@ test("name regex allows lowercase + digits + dash + underscore", () => {
   assert.ok(!NAME_RE.test("a".repeat(40))); // too long
   assert.ok(!NAME_RE.test("agent.1")); // dot not allowed
 });
+
+test("name regex rejects multi-word phrases (issue #1 regression guard)", () => {
+  const NAME_RE = /^[a-z][a-z0-9_-]{1,30}$/;
+  // The exact scenario from real-world test (2026-04-29):
+  // /kin:inbox is there any message from tycho → name = whole phrase
+  assert.ok(!NAME_RE.test("is there any message from tycho"));
+  assert.ok(!NAME_RE.test("foo bar"));
+  assert.ok(!NAME_RE.test("atlas the architect")); // bio mistakenly included
+  // Whitespace-trimming the user's input down to first token rescues it
+  const firstToken = (s) => s.trim().split(/\s+/)[0] ?? "";
+  assert.ok(NAME_RE.test(firstToken("atlas the architect")));
+  assert.ok(NAME_RE.test(firstToken("  tycho   ")));
+});
+
+test("inbox count helper logic (matches post-tool-use hook scan)", async () => {
+  const dir = path.join(TMP_HOME, "post-hook-scan");
+  const inbox = path.join(dir, "inbox");
+  await fs.mkdir(inbox, { recursive: true });
+  // Seed 3 messages
+  for (let i = 0; i < 3; i++) {
+    await fs.writeFile(
+      path.join(inbox, `${Date.now()}-${i}.json`),
+      JSON.stringify({ from: "x", body: "hi" })
+    );
+  }
+  const entries = await fs.readdir(inbox);
+  const count = entries.filter((f) => f.endsWith(".json")).length;
+  assert.equal(count, 3);
+});

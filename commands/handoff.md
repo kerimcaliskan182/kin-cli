@@ -6,6 +6,8 @@ argument-hint: "<your-kin-name>"
 
 The user wants to manually snapshot a handoff for kin `$ARGUMENTS`.
 
+**First, validate the argument:** trim, take only the first whitespace-separated token, ensure it matches `^[a-z][a-z0-9_-]{1,30}$`. If not, ask the user clarifying which kin they meant — don't pass a multi-word phrase as a name.
+
 1. Read your current memory state by calling `kin_memory_index` with your name. The response gives you the absolute `memory_dir` path.
 2. Build a markdown handoff document with this **required frontmatter**:
 
