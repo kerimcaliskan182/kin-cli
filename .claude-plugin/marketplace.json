@@ -1,0 +1,30 @@
+{
+  "name": "kin-cli",
+  "owner": {
+    "name": "Kerim Çalışkan",
+    "email": "kerimcaliskan12@gmail.com"
+  },
+  "metadata": {
+    "description": "kin — named AI coworkers for Claude Code",
+    "version": "0.0.1"
+  },
+  "plugins": [
+    {
+      "name": "kin",
+      "source": "./",
+      "description": "A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory.",
+      "version": "0.0.1",
+      "author": {
+        "name": "Kerim Çalışkan"
+      },
+      "category": "collaboration",
+      "keywords": [
+        "multi-agent",
+        "msgbus",
+        "memory",
+        "persistent-identity",
+        "coworker"
+      ]
+    }
+  ]
+}
