@@ -24,6 +24,135 @@ test("workspaceId is stable for the same cwd and varies across cwds", () => {
   assert.notEqual(a, c);
 });
 
+test("v0.1.2 workspace ID uses 8-char hash (issue #4)", async () => {
+  // Validate against the lib's actual implementation
+  const { workspaceId: libWsId, WORKSPACE_HASH_LEN } = await import(
+    "../lib/workspace.mjs"
+  );
+  assert.equal(WORKSPACE_HASH_LEN, 8);
+  const id = libWsId("/k/Projects/kin-cli");
+  // slug is "kin-cli", separator "-", then 8-char hex
+  const m = id.match(/^kin-cli-([a-f0-9]{8})$/);
+  assert.ok(m, `id '${id}' should match slug-8charhex`);
+});
+
+test("legacy 12-char workspace dirs migrate to 8-char (issue #4 backwards-compat)", async () => {
+  const { migrateLegacyWorkspaceIfPresent, KIN_HOME } = await import(
+    "../lib/workspace.mjs"
+  );
+  // Use a temp KIN_HOME for this test — the real one belongs to the user.
+  const tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "kin-mig-"));
+  // Build the two paths the way the lib does, but point at our tmpHome:
+  const cwd = path.join(tmpHome, "fake-project");
+  await fs.mkdir(cwd, { recursive: true });
+  const fullHash = crypto.createHash("sha1").update(cwd).digest("hex");
+  const slug = "fake-project";
+  const oldDir = path.join(KIN_HOME, `${slug}-${fullHash.slice(0, 12)}`);
+  const newDir = path.join(KIN_HOME, `${slug}-${fullHash.slice(0, 8)}`);
+  // Pre-clean any leftovers
+  await fs.rm(oldDir, { recursive: true, force: true });
+  await fs.rm(newDir, { recursive: true, force: true });
+  // Seed a legacy workspace
+  await fs.mkdir(path.join(oldDir, "agents", "ghost"), { recursive: true });
+  await fs.writeFile(
+    path.join(oldDir, "agents", "ghost", "identity.json"),
+    JSON.stringify({ name: "ghost" })
+  );
+  // Migrate
+  const moved = migrateLegacyWorkspaceIfPresent(cwd);
+  assert.ok(moved, "should report a migration occurred");
+  // New dir should exist now, old should not
+  await fs.access(path.join(newDir, "agents", "ghost", "identity.json"));
+  let oldStillThere = true;
+  try {
+    await fs.access(oldDir);
+  } catch {
+    oldStillThere = false;
+  }
+  assert.ok(!oldStillThere, "old dir should be gone after rename");
+  // Idempotent — second call is a no-op
+  const moved2 = migrateLegacyWorkspaceIfPresent(cwd);
+  assert.ok(!moved2, "second call should not migrate again");
+  // Cleanup
+  await fs.rm(newDir, { recursive: true, force: true });
+  await fs.rm(tmpHome, { recursive: true, force: true });
+});
+
+test("handoff frontmatter validator (issue #5)", () => {
+  // Minimal YAML-frontmatter-shaped parser for our schema.
+  // The four required keys are: kin, workspace, written_at, trigger.
+  // trigger ∈ {manual, pre-compact, session-end}.
+  function validateHandoffFrontmatter(body) {
+    const m = body.match(/^---\n([\s\S]*?)\n---\n/);
+    if (!m) return { ok: false, reason: "no frontmatter delimiters" };
+    const lines = m[1].split("\n");
+    const fm = {};
+    for (const line of lines) {
+      const k = line.match(/^([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+      if (k) fm[k[1]] = k[2].trim();
+    }
+    const missing = ["kin", "workspace", "written_at", "trigger"].filter(
+      (k) => !(k in fm)
+    );
+    if (missing.length) return { ok: false, reason: `missing: ${missing.join(",")}` };
+    if (!["manual", "pre-compact", "session-end"].includes(fm.trigger)) {
+      return { ok: false, reason: `bad trigger: ${fm.trigger}` };
+    }
+    return { ok: true };
+  }
+
+  // Valid handoff
+  const good = `---
+kin: halley
+workspace: test-kin-abcd1234
+written_at: 2026-04-29T15:00:00Z
+trigger: manual
+---
+# body
+`;
+  assert.equal(validateHandoffFrontmatter(good).ok, true);
+
+  // Missing trigger
+  const missing = `---
+kin: halley
+workspace: test-kin-abcd1234
+written_at: 2026-04-29T15:00:00Z
+---
+body
+`;
+  const r1 = validateHandoffFrontmatter(missing);
+  assert.equal(r1.ok, false);
+  assert.match(r1.reason, /trigger/);
+
+  // Bad trigger value
+  const badTrig = `---
+kin: halley
+workspace: test-kin-abcd1234
+written_at: 2026-04-29T15:00:00Z
+trigger: hocus-pocus
+---
+`;
+  const r2 = validateHandoffFrontmatter(badTrig);
+  assert.equal(r2.ok, false);
+  assert.match(r2.reason, /bad trigger/);
+
+  // No frontmatter at all
+  const noFm = `# just a markdown file\n`;
+  assert.equal(validateHandoffFrontmatter(noFm).ok, false);
+
+  // Optional fields don't break it
+  const withOpts = `---
+kin: halley
+workspace: test-kin-abcd1234
+written_at: 2026-04-29T15:00:00Z
+trigger: pre-compact
+session_id: s_abc
+tags: [shipped, verified]
+---
+`;
+  assert.equal(validateHandoffFrontmatter(withOpts).ok, true);
+});
+
 test("agent dir layout is creatable", async () => {
   const wsId = workspaceId("/tmp/test-ws");
   const wsDir = path.join(TMP_HOME, wsId);

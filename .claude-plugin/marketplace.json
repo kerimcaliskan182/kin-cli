@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "kin — named AI coworkers for Claude Code",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "plugins": [
     {
       "name": "kin",
       "source": "./",
       "description": "A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Kerim Çalışkan"
       },

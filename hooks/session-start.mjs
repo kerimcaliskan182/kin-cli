@@ -4,17 +4,7 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import os from "node:os";
-import crypto from "node:crypto";
-
-const KIN_HOME = process.env.KIN_HOME || path.join(os.homedir(), ".kin");
-
-function workspaceId() {
-  const cwd = process.cwd();
-  const hash = crypto.createHash("sha1").update(cwd).digest("hex").slice(0, 12);
-  const slug = path.basename(cwd).replace(/[^a-zA-Z0-9-_]/g, "-");
-  return `${slug}-${hash}`;
-}
+import { KIN_HOME, workspaceId } from "../lib/workspace.mjs";
 
 async function listAgents(workspaceDir) {
   try {

@@ -9,14 +9,17 @@ The user wants to manually snapshot a handoff for kin `$ARGUMENTS`.
 **First, validate the argument:** trim, take only the first whitespace-separated token, ensure it matches `^[a-z][a-z0-9_-]{1,30}$`. If not, ask the user clarifying which kin they meant — don't pass a multi-word phrase as a name.
 
 1. Read your current memory state by calling `kin_memory_index` with your name. The response gives you the absolute `memory_dir` path.
-2. Build a markdown handoff document with this **required frontmatter**:
+2. Build a markdown handoff document with this **required frontmatter** (the four required keys must all be present, in any order):
 
    ```
    ---
-   kin: <your-name>
-   workspace: <workspace-id from kin_team>
-   written_at: <ISO 8601 timestamp>
-   trigger: manual
+   kin: <your-name>                        # required, string, must match a claimed kin
+   workspace: <workspace-id from kin_team> # required, string
+   written_at: <ISO 8601 timestamp>        # required
+   trigger: manual                         # required: one of "manual" | "pre-compact" | "session-end"
+   # Optional (include if relevant):
+   # session_id: <opaque-id>               # optional, future use for cross-session linking
+   # tags: [shipped-feature, blocked]      # optional list
    ---
    ```
 

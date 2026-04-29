@@ -12,23 +12,14 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import crypto from "node:crypto";
+import { KIN_HOME, workspaceId, workspaceDir } from "../lib/workspace.mjs";
 
 // ---------------------------------------------------------------------------
 // Workspace + filesystem helpers
 // ---------------------------------------------------------------------------
 
-const KIN_HOME = process.env.KIN_HOME || path.join(os.homedir(), ".kin");
-
-function workspaceId() {
-  const cwd = process.cwd();
-  const hash = crypto.createHash("sha1").update(cwd).digest("hex").slice(0, 12);
-  const slug = path.basename(cwd).replace(/[^a-zA-Z0-9-_]/g, "-");
-  return `${slug}-${hash}`;
-}
-
-const WORKSPACE_DIR = path.join(KIN_HOME, workspaceId());
+const WORKSPACE_DIR = workspaceDir();
 
 const NAME_RE = /^[a-z][a-z0-9_-]{1,30}$/;
 
@@ -170,7 +161,7 @@ async function readMemoryIndex(name) {
 
 const server = new McpServer({
   name: "kin",
-  version: "0.1.1",
+  version: "0.1.2",
 });
 
 server.registerTool(

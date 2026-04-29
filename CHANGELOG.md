@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.1.2 — 2026-04-29
+
+Closes #4 and #5 — clearing the v0.1 backlog.
+
+### Changed
+- **Workspace ID hash shortened to 8 chars** (#4). `test-kin-f07f4bf1803e` → `test-kin-f07f4bf1`. Idempotent in-place migration runs at module load: any v0.1.x workspace dirs with 12-char hashes are renamed to the 8-char form on first encounter, preserving all existing kin (identity, memory, inbox, archive, handoff). Constants `WORKSPACE_HASH_LEN` and `LEGACY_WORKSPACE_HASH_LEN` exported for future bumps.
+- **Workspace helpers extracted to `lib/workspace.mjs`** — single source of truth for `KIN_HOME`, `workspaceId()`, `workspaceDir()`, and the legacy migration helper. `mcp/server.mjs` and all three hooks now import from there instead of duplicating the function.
+
+### Added
+- **Handoff frontmatter validator test** (#5). Confirms required keys (`kin / workspace / written_at / trigger`), validates `trigger ∈ {manual, pre-compact, session-end}`, and accepts optional `session_id` + `tags` fields without breaking. Foundation for the future `kin journal` command.
+- **Optional handoff frontmatter fields**: `session_id` (for cross-session linking) and `tags` (list, e.g. `[shipped, blocked]`) — explicitly documented in `commands/handoff.md`.
+
+### Tests
+- 12/12 smoke tests pass (was 9). Added: 8-char ID assertion, legacy migration round-trip, handoff frontmatter validator (one test, 4 assertions — happy path, missing key, bad trigger, optional fields).
+
 ## v0.1.1 — 2026-04-29
 
 Hardening release. Closes #1 and #3.
