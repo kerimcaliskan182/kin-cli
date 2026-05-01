@@ -78,6 +78,156 @@ test("legacy 12-char workspace dirs migrate to 8-char (issue #4 backwards-compat
   await fs.rm(tmpHome, { recursive: true, force: true });
 });
 
+// --- v0.2 presence + watcher integration tests --------------------------
+
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+
+const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+
+function runScript(scriptRelPath, args, kinHome, cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      [path.join(REPO_ROOT, scriptRelPath), ...args],
+      {
+        cwd,
+        env: { ...process.env, KIN_HOME: kinHome },
+        stdio: ["ignore", "pipe", "pipe"],
+      }
+    );
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (d) => (stdout += d.toString()));
+    child.stderr.on("data", (d) => (stderr += d.toString()));
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
+async function setupPresenceTestDir(label) {
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), `kin-presence-${label}-`));
+  const work = await fs.mkdtemp(path.join(os.tmpdir(), `kin-cwd-${label}-`));
+  // Compute the workspace id the lib will derive from work dir
+  const fullHash = crypto.createHash("sha1").update(work).digest("hex");
+  const slug = path.basename(work).replace(/[^a-zA-Z0-9-_]/g, "-");
+  const wsId = `${slug}-${fullHash.slice(0, 8)}`;
+  const wsDir = path.join(home, wsId);
+  return { home, work, wsId, wsDir };
+}
+
+test("presence file has expected shape (v0.2)", async () => {
+  const { home, work, wsDir } = await setupPresenceTestDir("shape");
+  const agent = path.join(wsDir, "agents", "tester");
+  await fs.mkdir(agent, { recursive: true });
+  const presence = {
+    pid: 12345,
+    watcher_pid: 12345,
+    name: "tester",
+    started_at: new Date().toISOString(),
+    command: "node scripts/watch-inbox.mjs tester",
+    cwd: work,
+  };
+  await fs.writeFile(path.join(agent, "presence.json"), JSON.stringify(presence));
+  const back = JSON.parse(await fs.readFile(path.join(agent, "presence.json"), "utf8"));
+  assert.equal(back.pid, 12345);
+  assert.equal(back.name, "tester");
+  assert.ok(back.started_at);
+  await fs.rm(home, { recursive: true, force: true });
+  await fs.rm(work, { recursive: true, force: true });
+});
+
+test("list-presence: empty workspace returns empty arrays", async () => {
+  const { home, work, wsId } = await setupPresenceTestDir("empty");
+  const r = await runScript("scripts/list-presence.mjs", [], home, work);
+  assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.workspace_id, wsId);
+  assert.deepEqual(out.online, []);
+  assert.deepEqual(out.offline_claimed, []);
+  assert.deepEqual(out.stale_presence, []);
+  await fs.rm(home, { recursive: true, force: true });
+  await fs.rm(work, { recursive: true, force: true });
+});
+
+test("list-presence: dead PID classified as stale_presence", async () => {
+  const { home, work, wsDir } = await setupPresenceTestDir("dead");
+  const agent = path.join(wsDir, "agents", "ghost");
+  await fs.mkdir(agent, { recursive: true });
+  // PID 999999 is almost certainly dead on every platform we care about
+  await fs.writeFile(
+    path.join(agent, "presence.json"),
+    JSON.stringify({ pid: 999999, name: "ghost", started_at: "2026-01-01T00:00:00Z" })
+  );
+  const r = await runScript("scripts/list-presence.mjs", [], home, work);
+  assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+  const out = JSON.parse(r.stdout);
+  assert.deepEqual(out.online, []);
+  assert.deepEqual(out.offline_claimed, []);
+  assert.deepEqual(out.stale_presence, ["ghost"]);
+  await fs.rm(home, { recursive: true, force: true });
+  await fs.rm(work, { recursive: true, force: true });
+});
+
+test("list-presence: live PID (this test process) classified as online", async () => {
+  const { home, work, wsDir } = await setupPresenceTestDir("alive");
+  const agent = path.join(wsDir, "agents", "alive");
+  await fs.mkdir(agent, { recursive: true });
+  await fs.writeFile(
+    path.join(agent, "presence.json"),
+    JSON.stringify({
+      pid: process.pid, // we're alive, so this PID is alive
+      name: "alive",
+      started_at: new Date().toISOString(),
+    })
+  );
+  const r = await runScript("scripts/list-presence.mjs", [], home, work);
+  assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.online.length, 1);
+  assert.equal(out.online[0].name, "alive");
+  assert.equal(out.online[0].pid, process.pid);
+  assert.deepEqual(out.stale_presence, []);
+  await fs.rm(home, { recursive: true, force: true });
+  await fs.rm(work, { recursive: true, force: true });
+});
+
+test("stop-watcher: no presence file → idempotent exit 0 'already offline'", async () => {
+  const { home, work, wsDir } = await setupPresenceTestDir("none");
+  const agent = path.join(wsDir, "agents", "ghost");
+  await fs.mkdir(agent, { recursive: true });
+  const r = await runScript("scripts/stop-watcher.mjs", ["ghost"], home, work);
+  assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+  assert.match(r.stdout, /already offline|no presence/i);
+  await fs.rm(home, { recursive: true, force: true });
+  await fs.rm(work, { recursive: true, force: true });
+});
+
+test("stop-watcher: stale presence (dead PID) → removes file, exits 0", async () => {
+  const { home, work, wsDir } = await setupPresenceTestDir("stale");
+  const agent = path.join(wsDir, "agents", "ghost");
+  await fs.mkdir(agent, { recursive: true });
+  const presencePath = path.join(agent, "presence.json");
+  await fs.writeFile(
+    presencePath,
+    JSON.stringify({ pid: 999999, name: "ghost" })
+  );
+  const r = await runScript("scripts/stop-watcher.mjs", ["ghost"], home, work);
+  assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+  // Presence file should be gone
+  let exists = false;
+  try {
+    await fs.access(presencePath);
+    exists = true;
+  } catch {
+    exists = false;
+  }
+  assert.ok(!exists, "stale presence file should have been removed");
+  await fs.rm(home, { recursive: true, force: true });
+  await fs.rm(work, { recursive: true, force: true });
+});
+
 test("handoff frontmatter validator (issue #5)", () => {
   // Minimal YAML-frontmatter-shaped parser for our schema.
   // The four required keys are: kin, workspace, written_at, trigger.

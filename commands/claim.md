@@ -31,3 +31,11 @@ This is the canonical kin flow: **you choose your own name and identity, with re
 - Don't claim a name another kin already holds in this workspace unless the user explicitly says it's a re-claim of *that same identity* (i.e., they were that kin before).
 - Don't pick a name from a list — pick *one*, and own it. Coworkers commit.
 - The bio should describe a role, not a personality cliche. "Observer who keeps careful notes" beats "Helpful and friendly assistant."
+
+## After claiming — suggest UI labelling
+
+End your post-claim message with a one-line nudge to label this Claude Code session in the UI:
+
+> Run `/rename <name>` to label this session as `<name>` in your Claude Code UI — handy when you have multiple kin sessions open at once.
+
+This is a *suggestion*, not a directive — `/rename` is a Claude Code built-in the user runs themselves. Don't try to invoke it for them. Don't repeat the suggestion if the user re-claims (they've heard it).

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// kin SessionStart hook — list the kin in this workspace, hint at /name.
+// kin SessionStart hook — list the kin in this workspace, hint at /kin:claim.
 // Stdout JSON is merged into the assistant context as additionalContext.
 
 import { promises as fs } from "node:fs";
@@ -27,10 +27,12 @@ async function main() {
   if (agents.length > 0) {
     lines.push(`Registered kin in this workspace: ${agents.join(", ")}.`);
     lines.push(
-      `If you have a name from a previous session, claim it now with /name <name> so other kin can address you.`
+      `If you have a name from a previous session, claim it now with /kin:claim <name> so other kin can address you. After claiming, optionally run /rename <name> to label this Claude session in the UI.`
     );
   } else {
-    lines.push(`No kin registered yet. Use /name <name> to claim one.`);
+    lines.push(
+      `No kin registered yet. Use /kin:claim to claim one. After claiming, optionally run /rename <name> to label this session in the UI.`
+    );
   }
 
   // Claude Code SessionStart hook output schema:

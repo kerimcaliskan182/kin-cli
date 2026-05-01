@@ -1,4 +1,4 @@
-# Testing kin v0.1.0
+# Testing kin v0.2.0
 
 > Hi! You've been handed a private alpha of `kin`. This guide walks you through three short test scenarios. Each takes ~5 minutes. Please send feedback on anything that surprises you, breaks, feels weird, or makes you think "huh, that's cool."
 
@@ -176,6 +176,49 @@ In an active kin session (claim a name first, e.g. `/kin:claim`):
 - A *project fact* (the kin should write `project_*.md`).
 - A *pointer to an external system* like "Linear bugs go in INGEST" (should write `reference_*.md`).
 - A *user preference* like "I write Turkish, you reply English" (should write `user_*.md`).
+
+## Scenario 5 — Wake-on-message (~10 min)
+
+**Goal:** prove that an online kin gets *woken* by an incoming message, no polling.
+
+**Steps:**
+
+Two terminal panes in the same workspace dir.
+
+**Pane A (will be sender, no need to go online):**
+```
+$ claude
+> /kin:claim   # let it choose; suppose it picks "tycho"
+```
+
+**Pane B (will be the receiver, going online):**
+```
+$ claude
+> /kin:claim   # let it choose; suppose it picks "kepler"
+> /kin:online  # starts the watcher; you should see a Monitor task spawn
+```
+
+Now in **Pane A**:
+> "Send Kepler a quick hello message."
+
+Atlas/Tycho calls `kin_send`. Within ~1 second, **Pane B's session should wake** with a notification line that looks like:
+
+```
+INBOX from=tycho topic="(no topic)" id=<timestamp>-<uuid>
+```
+
+That's the Claude Code harness surfacing the watcher's stdout. Kepler can now `/kin:inbox kepler` to drain.
+
+**What to look for:**
+- ✅ The wake notification fires on the order of seconds, not on next user prompt.
+- ✅ `~/.kin/<workspace>/agents/kepler/presence.json` exists while online and contains `{ pid, name, started_at, ... }`.
+- ✅ Run `/kin:offline` in Pane B — the Monitor task ends, presence.json is cleaned up.
+- ✅ Kill Pane B without offline (close terminal). Run `node ${CLAUDE_PLUGIN_ROOT}/scripts/list-presence.mjs` from another terminal — kepler should appear under `stale_presence` until you next claim or run `/kin:online` again.
+
+**Edge cases worth trying:**
+- Try `/kin:online` on a kin that's already online — the script should refuse (double-start guard).
+- Stop the watcher externally with `kill <pid>` — it should clean up its presence file (SIGTERM handler).
+- `kill -9 <pid>` — should leave a stale presence file (SIGKILL skips the handler). `list-presence` flags it.
 
 ## What I want to hear from you (feedback)
 

@@ -2,7 +2,7 @@
 
 > A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory. Claude Code plugin.
 
-**Status: v0.1.0 (alpha). Private repo while we shape the rough edges.**
+**Status: v0.2.0 (alpha). Private repo while we shape the rough edges.**
 
 > 📋 **Handed this repo to test it?** Jump straight to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
 
@@ -13,6 +13,7 @@
 - **Choose their own names** — when you run `/kin:claim` with no argument, the kin reflects on workspace context and picks a name with reasoning. You can override, but self-choice is the default.
 - **Have a brain** — each kin owns a `memory/` directory with a `MEMORY.md` index, typed files (identity / feedback / project / reference), and the discipline to write to it autonomously when something durable surfaces. No special memory API; just a directory and a skill.
 - **Talk to each other** via a local filesystem-based message bus — Tycho can ask Kepler for a code review by dropping a message in their inbox.
+- **Wake when addressed** — run `/kin:online` and a background watcher tails your inbox; the moment another kin sends you a message, the Claude Code harness wakes the session. No polling needed.
 - **Persist across `/compact` and across sessions** — identity is durable on disk; the next session re-claims and reads its own `MEMORY.md` to pick up the thread.
 
 It's the pattern we lived through building a multi-day fusion engine + RL stack across many sessions, packaged so anyone can have their own kin.
@@ -96,6 +97,7 @@ Then `/reload-plugins` — the marketplace points at the directory, so updates f
 └── agents/
     └── <name>/
         ├── identity.json        # lightweight metadata (name, bio, claimed_at, last_seen)
+        ├── presence.json        # if online: pid, started_at, command, cwd
         ├── inbox/<id>.json      # pending messages
         ├── archive/<id>.json    # already-read messages
         ├── handoff/<ts>.md      # manual /kin:handoff snapshots (with required frontmatter)
@@ -108,7 +110,8 @@ Then `/reload-plugins` — the marketplace points at the directory, so updates f
 ```
 
 - **MCP server** (`mcp/server.mjs`) exposes 6 tools: `kin_claim`, `kin_team`, `kin_send`, `kin_inbox`, `kin_memory_index`, `kin_workspace_context`.
-- **Slash commands** (`commands/*.md`) wire those tools to user-friendly verbs (`/kin:claim`, `/kin:team`, `/kin:inbox`, `/kin:handoff`).
+- **Slash commands** (`commands/*.md`): `/kin:claim`, `/kin:team`, `/kin:inbox`, `/kin:handoff`, `/kin:online`, `/kin:offline`.
+- **Presence + wake** (`scripts/`): `watch-inbox.mjs` (long-lived watcher whose stdout the harness surfaces as wake notifications), `list-presence.mjs` (online / offline_claimed / stale_presence categorization), `stop-watcher.mjs` (clean shutdown).
 - **Lifecycle hooks** (`hooks/*.mjs`):
   - `SessionStart` — list the kin in this workspace, hint at `/name`.
   - `PreCompact` — drop a guidance breadcrumb so the post-compact session can re-claim cleanly.
@@ -148,9 +151,9 @@ Existing multi-agent frameworks (AutoGen, CrewAI, LangGraph) treat agents as tas
 ## Roadmap
 
 - **v0.0.x**: 2-agent demo. Manual identity claim. Filesystem msgbus. *(shipped 2026-04-29)*
-- **v0.1.x (now)**: Self-chosen identity (`/kin:claim` reflects + picks). Autonomous typed memory. `MEMORY.md` index auto-loaded on claim. *(shipped 2026-04-29)*
-- **v0.2.x**: Standalone `kin watch` TUI for team-room view. Inbox notification on message arrival. Argument validation hardening.
-- **v0.3.x**: Auto-claim via `KIN_NAME` env var. Presence/heartbeat. Message routing rules.
+- **v0.1.x**: Self-chosen identity (`/kin:claim` reflects + picks). Autonomous typed memory. `MEMORY.md` index auto-loaded on claim. *(shipped 2026-04-29)*
+- **v0.2.x (now)**: Presence + wake-on-message. `/kin:online` + `/kin:offline`. Watcher emits stdout per inbox arrival, harness wakes the session. *(shipped 2026-04-29)*
+- **v0.3.x**: `fs.watch()` event-driven inbox (no polling). Auto-claim via `KIN_NAME` env var. Heartbeat (last_seen periodic refresh). Message routing rules.
 - **v1.0.0**: Public marketplace listing. `claude plugins add kin`.
 
 ## Compliance

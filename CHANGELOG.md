@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.2.0 — 2026-04-29
+
+The "kin can be **online** and wake on incoming messages" release. Closes #2.
+
+### Added — presence + wake-on-message
+- **`/kin:online [name]`** — start a long-lived inbox watcher whose stdout is surfaced as Claude Code wake notifications. Each new message in this kin's inbox emits one line and the harness wakes the session. No more polling, no more "did anyone send me anything?"
+- **`/kin:offline [name]`** — stop the watcher, clean up presence, end the Monitor task. Idempotent and safe to re-run.
+- **`scripts/watch-inbox.mjs`** — the watcher. Polls `agents/<name>/inbox/` every 1s, emits `INBOX from=<sender> topic=<…> id=<msgid>` on stdout for each new file. Writes presence file on startup, cleans up on SIGINT/SIGTERM/SIGHUP. Refuses to start if a live watcher already exists for the same kin (double-start guard, prevents the inbox-archival race).
+- **`scripts/list-presence.mjs`** — reads all `agents/*/presence.json` files in the workspace, uses `kill -0` to test PID liveness, returns JSON with three categories: `online` / `offline_claimed` / `stale_presence`. Used by `/kin:online` for discovery.
+- **`scripts/stop-watcher.mjs`** — SIGTERM the watcher, wait up to 2s for the cleanup handler to run, remove residual presence file if needed. Doesn't escalate to SIGKILL — that would skip the cleanup handler.
+
+### Changed — PostToolUse hook is now offline-only
+- The v0.1.1 PostToolUse hook used to announce *all* pending inboxes. With watchers introduced, online kin already get wake notifications from their own watcher — a PostToolUse mention would be redundant. The hook now skips kin with live watchers and only surfaces mail for kin in `offline_claimed` state. Notification message changed from `kin pending inboxes:` to `kin offline inboxes have mail:` to make the new semantics explicit.
+
+### Changed — small UX fixes
+- **SessionStart hook** now points at `/kin:claim` (was the deprecated `/kin:name`) and suggests `/rename <name>` to label the Claude Code session in the UI.
+- **`/kin:claim`** suggests `/rename <name>` after a successful claim, with an explicit note that `/rename` is a Claude Code built-in and the user runs it themselves. Verified: `/rename` is a real Claude Code built-in command.
+
+### Added — tests
+- 6 new integration tests for the v0.2 scripts: presence file shape, list-presence empty workspace, list-presence with dead PID (stale_presence), list-presence with live PID (online — uses this test process's PID), stop-watcher idempotent on no-presence, stop-watcher cleans up stale file. Spawns subprocesses with controlled `KIN_HOME` + temp cwd for isolation.
+- 18/18 smoke tests pass (was 12).
+
+### Notes / known follow-ups
+- Watcher polls at 1s. Real `fs.watch()` (inotify / FSEvents / RDCW) is the next step but has cross-platform gotchas; deferred.
+- Presence files persist on SIGKILL. `list-presence`'s `stale_presence` bucket surfaces these so users know to investigate.
+- `/kin:online`'s inference rule: when `$ARGUMENTS` is empty, infer the kin name from session context (recent `/kin:claim`, `from=` in recent `kin_send` calls, kin's self-references). After `/clear` or some compactions, re-run `/kin:claim <name>` first to restore identity.
+
 ## v0.1.2 — 2026-04-29
 
 Closes #4 and #5 — clearing the v0.1 backlog.
