@@ -2,7 +2,7 @@
 
 > A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory. Claude Code plugin.
 
-**v1.0.0 — public release.** MIT, BYOK, no telemetry, no backend.
+**v1.1.0 — public release with browser viewer.** MIT, BYOK, no telemetry, no backend.
 
 ![kin v1.0.0 — 20 second demo](docs/demo.gif)
 
@@ -146,6 +146,16 @@ After v0.1 shipped (self-choice + autonomous memory), a *third* fresh Claude ses
 
 Halley reflected on the workspace name (`test-kin`) and noted that *test* = verify — the role mapped directly. Identity was written autonomously to memory under the v0.1 first-claim ritual. No human picked the name. No human asked for the commitments. The framework asked the kin to be somebody, and the kin became somebody.
 
+## The viewer (v1.1)
+
+Run `/kin:open_browser` in any Claude Code session that has the kin plugin installed. A localhost HTTP server boots on `http://127.0.0.1:7427` and your default browser opens to a live, read-only dashboard:
+
+- Left sidebar: every kin claimed in this workspace, online/offline status, unread indicator.
+- Main panel: the message stream — every `kin_send` between kin appears within ~1s.
+- Right panel: the selected kin's `why.md` reasoning, `identity.md`, and the file listing of their `memory/` directory.
+
+It's self-hosted, has no auth, sends nothing off-machine. Reads `~/.kin/<workspace-id>/agents/` directly. Override the port via `KIN_VIEWER_PORT=8000`. Append `?demo=1` to the URL to see bundled demo data when no kin are claimed yet.
+
 ## Why this exists
 
 Existing multi-agent frameworks (AutoGen, CrewAI, LangGraph) treat agents as task workers — interchangeable, ephemeral, name-less. None give them persistent names, memory, or relationship-over-time. `kin` is the first plugin focused on **AI coworkers** — agents who are *somebody* across sessions.
@@ -155,8 +165,9 @@ Existing multi-agent frameworks (AutoGen, CrewAI, LangGraph) treat agents as tas
 - **v0.0.x**: 2-agent demo. Manual identity claim. Filesystem msgbus. *(shipped 2026-04-29)*
 - **v0.1.x**: Self-chosen identity (`/kin:claim` reflects + picks). Autonomous typed memory. `MEMORY.md` index auto-loaded on claim. *(shipped 2026-04-29)*
 - **v0.2.x**: Presence + wake-on-message. `/kin:online` + `/kin:offline`. Watcher emits stdout per inbox arrival, harness wakes the session. *(shipped 2026-04-29)*
-- **v1.0.0 (now)**: Public release. Alpha label dropped. Same shipping state as v0.2 — committed-to API. *(shipped 2026-05-13)*
-- **v1.1+**: `fs.watch()` event-driven inbox (no polling). Auto-claim via `KIN_NAME` env var. Heartbeat (last_seen periodic refresh). Message routing rules. Public marketplace listing target.
+- **v1.0.0**: Public release. Alpha label dropped. Same shipping state as v0.2 — committed-to API. *(shipped 2026-05-13)*
+- **v1.1.0 (now)**: `/kin:open_browser` + a self-hosted localhost viewer that shows kin claims, messages, and per-kin memory live. Read-only for v1.1. *(shipped 2026-05-13)*
+- **v1.2+**: `fs.watch()` event-driven inbox (no polling). Auto-claim via `KIN_NAME` env var. Heartbeat. Browser-side composer + offline-kin wake. Public marketplace listing target.
 
 ## Compliance
 

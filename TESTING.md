@@ -1,4 +1,4 @@
-# Testing kin v1.0.0
+# Testing kin v1.1.0
 
 > Hi! This guide walks you through three short test scenarios for `kin`. Each takes ~5 minutes. Send feedback on anything that surprises you, breaks, feels weird, or makes you think "huh, that's cool."
 
