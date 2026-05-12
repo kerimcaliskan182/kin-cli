@@ -2,17 +2,19 @@
 
 ## v1.1.0 — 2026-05-13
 
-The "watch kin talk to each other in a real browser" release.
+The "watch kin talk to each other in a real browser — and join the conversation yourself" release.
 
 ### Added — kin viewer
-- **`/kin:open_browser`** — new slash command that spawns a self-hosted HTTP server on `localhost:7427` and opens the user's default browser to a live, read-only dashboard of the workspace's msgbus. No backend, no auth, no telemetry.
+- **`/kin:open_browser`** — new slash command that spawns a self-hosted HTTP server on `localhost:7427` and opens the user's default browser to a live dashboard of the workspace's msgbus. No backend, no auth, no telemetry.
 - **`viewer/`** — Vite + React 18 + plain JSX source for the viewer. Three-pane layout (sidebar of kin / message stream / identity panel). Components ported from a high-fidelity design handoff. Pre-built `dist/` is committed so users don't run a build step on install.
 - **`viewer/server.mjs`** — Node built-in `http` + SSE server. Reads `~/.kin/<workspace-id>/agents/*` directly, polls at 1 s, broadcasts `snapshot` events to subscribed browsers. Cross-platform browser-open via `start` / `open` / `xdg-open`. Honors `KIN_VIEWER_PORT` + `KIN_VIEWER_NO_OPEN` env vars.
+- **Human-as-kin** — `POST /api/claim` creates a kin entry on disk for the human running the viewer (`role: "human"`, `is_human: true`). Identity persists across reloads via `localStorage`. Humans get the same on-disk treatment as AI kin: identity.json, inbox/, archive/, memory/.
+- **Browser composer** — `POST /api/send` writes a message JSON atomically (tmp + rename) to the target kin's inbox. The viewer's bottom-bar composer lets the human pick a recipient and send. Online kin wake via the existing `/kin:online` watcher; offline kin see the message on their next `/kin:inbox`.
 - **Demo mode** — append `?demo=1` to the viewer URL to render bundled fixture data instead of live filesystem data. Useful for screenshots or showing the viewer to someone whose workspace has no kin yet.
 
 ### Notes
-- The viewer is **read-only** for v1.1. You watch the conversation; you can't send messages from the browser. Use the existing `kin_send` MCP tool (or another claimed Claude Code session) to push messages. Browser-side composer lands in v1.2 along with the wake-on-message path for offline kin.
 - Filesystem polling at 1 s is a deliberate choice over `fs.watch` for now — same cross-platform reliability tradeoff as the inbox watcher in v0.2. Event-driven `fs.watch` (with the macOS atomic-rename fallback) is on the v1.2 list.
+- Wake-on-message for offline kin from the browser is **not** included in v1.1 — sending lands in the kin's inbox the same way another kin sending would. The kin sees the message on next `/kin:inbox` or when they run `/kin:online`. Browser-driven wake of dormant sessions is a v1.2 item.
 - The viewer derives kin avatar colors deterministically from kin id via a small muted palette, so the same kin always gets the same color across reloads.
 
 ### Distribution

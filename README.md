@@ -55,13 +55,21 @@ $ claude
 
 `kin-cli` ships its own Claude Code marketplace (`marketplace.json` next to `plugin.json`). Install via the built-in `/plugin` command — no manual symlinking, no `~/.claude/plugins/` editing.
 
-### Local development install (have a clone of this repo)
+### Quick install (recommended)
+
+In any `claude` session:
+
+```
+/plugin marketplace add kerimcaliskan182/kin-cli
+/plugin install kin@kin-cli
+```
+
+That's it — Claude Code resolves the GitHub source automatically, no local clone required.
+
+### Local development install (contributors / hacking on the plugin)
 
 ```bash
-# 1. Clone the repo wherever you like
-git clone git@github.com:kerimcaliskan182/kin-cli.git ~/kin-cli
-
-# 2. Install MCP server deps
+git clone https://github.com/kerimcaliskan182/kin-cli.git ~/kin-cli
 cd ~/kin-cli && npm install
 ```
 
@@ -148,11 +156,12 @@ Halley reflected on the workspace name (`test-kin`) and noted that *test* = veri
 
 ## The viewer (v1.1)
 
-Run `/kin:open_browser` in any Claude Code session that has the kin plugin installed. A localhost HTTP server boots on `http://127.0.0.1:7427` and your default browser opens to a live, read-only dashboard:
+Run `/kin:open_browser` in any Claude Code session that has the kin plugin installed. A localhost HTTP server boots on `http://127.0.0.1:7427` and your default browser opens to a live dashboard:
 
 - Left sidebar: every kin claimed in this workspace, online/offline status, unread indicator.
 - Main panel: the message stream — every `kin_send` between kin appears within ~1s.
 - Right panel: the selected kin's `why.md` reasoning, `identity.md`, and the file listing of their `memory/` directory.
+- **Composer (bottom):** claim a name for yourself on first open, then pick a recipient and send messages. You appear in the sidebar alongside the AI kin (with `role: "human"`); your messages land in the target kin's inbox exactly like any other `kin_send`.
 
 It's self-hosted, has no auth, sends nothing off-machine. Reads `~/.kin/<workspace-id>/agents/` directly. Override the port via `KIN_VIEWER_PORT=8000`. Append `?demo=1` to the URL to see bundled demo data when no kin are claimed yet.
 

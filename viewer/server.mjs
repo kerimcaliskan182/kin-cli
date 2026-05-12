@@ -20,6 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import os from "node:os";
+import crypto from "node:crypto";
 import { workspaceDir, workspaceId } from "../lib/workspace.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -314,6 +315,98 @@ function jsonResp(res, body, status = 200) {
   res.end(JSON.stringify(body));
 }
 
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let buf = "";
+    req.on("data", (c) => (buf += c));
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(buf || "{}"));
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+const KIN_NAME_RE = /^[a-z0-9_][a-z0-9_-]{0,31}$/;
+
+async function handleClaim(req, res) {
+  try {
+    const body = await readBody(req);
+    const name = String(body.name || "").trim().toLowerCase();
+    if (!KIN_NAME_RE.test(name)) {
+      return jsonResp(
+        res,
+        { error: "name must match /^[a-z0-9_][a-z0-9_-]{0,31}$/" },
+        400
+      );
+    }
+    const dir = path.join(AGENTS_DIR, name);
+    await fsp.mkdir(dir, { recursive: true });
+    await fsp.mkdir(path.join(dir, "memory"), { recursive: true });
+    await fsp.mkdir(path.join(dir, "inbox"), { recursive: true });
+    await fsp.mkdir(path.join(dir, "archive"), { recursive: true });
+    const idFile = path.join(dir, "identity.json");
+    const existing = await readJsonSafe(idFile);
+    const now = new Date().toISOString();
+    const identity = existing || {
+      name,
+      role: body.role || "human",
+      bio: body.bio || "human participant via the viewer",
+      is_human: true,
+      claimed_at: now,
+    };
+    identity.last_seen = now;
+    if (!existing) identity.is_human = true; // mark fresh human kin
+    await fsp.writeFile(idFile, JSON.stringify(identity, null, 2));
+    lastSig = ""; // force snapshot broadcast next tick
+    return jsonResp(res, { ok: true, name });
+  } catch (e) {
+    return jsonResp(res, { error: e.message }, 500);
+  }
+}
+
+async function handleSend(req, res) {
+  try {
+    const body = await readBody(req);
+    const from = String(body.from || "").trim().toLowerCase();
+    const to = String(body.to || "").trim().toLowerCase();
+    const msgBody = String(body.body || "").trim();
+    if (!KIN_NAME_RE.test(from) || !KIN_NAME_RE.test(to)) {
+      return jsonResp(res, { error: "invalid from/to" }, 400);
+    }
+    if (!msgBody) {
+      return jsonResp(res, { error: "body required" }, 400);
+    }
+    const recipientDir = path.join(AGENTS_DIR, to);
+    const recipientExists = await statSafe(recipientDir);
+    if (!recipientExists) {
+      return jsonResp(res, { error: `recipient '${to}' not found` }, 404);
+    }
+    const inboxDir = path.join(recipientDir, "inbox");
+    await fsp.mkdir(inboxDir, { recursive: true });
+    const id = crypto.randomBytes(8).toString("hex");
+    const msg = {
+      id,
+      from,
+      to,
+      body: msgBody,
+      sent_at: new Date().toISOString(),
+    };
+    // atomic write — tmp + rename, same discipline as the kin MCP server
+    const tmpPath = path.join(inboxDir, `.${id}.tmp`);
+    const finalPath = path.join(inboxDir, `${id}.json`);
+    await fsp.writeFile(tmpPath, JSON.stringify(msg, null, 2));
+    await fsp.rename(tmpPath, finalPath);
+    lastSig = ""; // force snapshot broadcast next tick
+    return jsonResp(res, { ok: true, id });
+  } catch (e) {
+    return jsonResp(res, { error: e.message }, 500);
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
 
@@ -325,6 +418,12 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname === "/api/snapshot") {
     return jsonResp(res, await fullSnapshot());
+  }
+  if (url.pathname === "/api/claim" && req.method === "POST") {
+    return handleClaim(req, res);
+  }
+  if (url.pathname === "/api/send" && req.method === "POST") {
+    return handleSend(req, res);
   }
   if (url.pathname === "/api/stream") {
     res.writeHead(200, {

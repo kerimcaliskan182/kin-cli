@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sidebar,
   MessageStream,
@@ -9,10 +9,11 @@ import {
 } from "./components.jsx";
 import { KIN_DATA } from "./data.js";
 
+const ME_STORAGE_KEY = "kin.viewer.me";
+
 // Subscribes to /api/stream and returns { kin, messages, now } that update
 // live as the server detects filesystem changes. Falls back to the bundled
-// demo data when the page is loaded with ?demo=1 (useful for screenshots
-// or sharing the viewer with people who haven't claimed any kin yet).
+// demo data when the page is loaded with ?demo=1.
 function useSnapshot() {
   const isDemo =
     typeof window !== "undefined" &&
@@ -33,7 +34,7 @@ function useSnapshot() {
       }
     });
     es.onerror = () => {
-      /* keep the last good snapshot — EventSource retries automatically */
+      /* keep last good snapshot — EventSource retries automatically */
     };
     return () => es.close();
   }, [isDemo]);
@@ -50,19 +51,23 @@ export function App() {
   const [filterKinId, setFilterKinId] = useState(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
-  // tick "now" each 30s for rolling relative timestamps
+  // The human's own claimed kin name. Persisted in localStorage so reload
+  // doesn't force them to re-claim. Cleared on /api/claim failure or manual
+  // reset (out of scope for v1.1).
+  const [me, setMe] = useState(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(ME_STORAGE_KEY);
+  });
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
 
-  // sync now whenever the server snapshot ticks
   useEffect(() => {
     if (snapNow) setNow(snapNow);
   }, [snapNow]);
 
-  // auto-select the first kin once data arrives, or whenever the current
-  // selection disappears (e.g. that kin was removed from the workspace)
   useEffect(() => {
     if (kin.length === 0) {
       setSelectedKinId(null);
@@ -73,14 +78,45 @@ export function App() {
     }
   }, [kin, selectedKinId]);
 
+  const claim = useCallback(async (name) => {
+    const r = await fetch("/api/claim", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.error || "claim failed");
+    window.localStorage.setItem(ME_STORAGE_KEY, j.name);
+    setMe(j.name);
+    return j.name;
+  }, []);
+
+  const send = useCallback(
+    async (to, body) => {
+      if (!me) throw new Error("no claimed name");
+      const r = await fetch("/api/send", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ from: me, to, body }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || "send failed");
+      return j.id;
+    },
+    [me]
+  );
+
   const selectedKin = kin.find((k) => k.id === selectedKinId) || kin[0] || null;
 
   const isEmpty = kin.length === 0;
   const rightOpen = rightPanelOpen && !isEmpty && !!selectedKin;
 
-  // Unread counts: messages a kin would see in their own inbox that haven't
-  // been moved to archive yet. The server doesn't currently distinguish, so
-  // leave this empty for now — wire up in v1.2 when we have a real signal.
+  // Other kin = everyone except "me"; humans can't send to themselves.
+  const otherKin = useMemo(
+    () => kin.filter((k) => k.id !== me),
+    [kin, me]
+  );
+
   const unreadByKin = useMemo(() => ({}), []);
 
   return (
@@ -104,6 +140,7 @@ export function App() {
             disabled
           />
           <EmptyState />
+          {me ? null : <ClaimBanner onClaim={claim} />}
         </main>
       ) : (
         <main className="main">
@@ -130,6 +167,11 @@ export function App() {
             onSelectKin={setSelectedKinId}
             animateLast={false}
           />
+          {me ? (
+            <Composer me={me} kin={otherKin} onSend={send} />
+          ) : (
+            <ClaimBanner onClaim={claim} />
+          )}
         </main>
       )}
       {rightOpen && (
@@ -166,7 +208,7 @@ function Topbar({
           "no kin yet"
         ) : (
           <>
-            {kinOnline} of {kinTotal} online · read-only
+            {kinOnline} of {kinTotal} online
           </>
         )}
       </span>
@@ -232,5 +274,133 @@ function FilterChips({ kin, filterKinId, setFilterKinId }) {
         </button>
       ))}
     </div>
+  );
+}
+
+// ---- claim banner: first-time UX ----
+function ClaimBanner({ onClaim }) {
+  const [name, setName] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (busy) return;
+    const n = name.trim().toLowerCase();
+    if (!/^[a-z0-9_][a-z0-9_-]{0,31}$/.test(n)) {
+      setErr("lowercase letters, digits, _, - · 1–32 chars · can't start with -");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    try {
+      await onClaim(n);
+    } catch (e) {
+      setErr(e.message || "claim failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="claim-banner" onSubmit={submit}>
+      <span className="claim-hint">claim a name to send messages:</span>
+      <input
+        className="claim-input"
+        placeholder="your name (e.g. kerim, simge, dev)"
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setErr("");
+        }}
+        autoFocus
+        disabled={busy}
+      />
+      <button className="claim-btn" type="submit" disabled={busy || !name.trim()}>
+        {busy ? "claiming…" : "claim"}
+      </button>
+      {err && <span className="claim-err">{err}</span>}
+    </form>
+  );
+}
+
+// ---- composer: send a message ----
+function Composer({ me, kin, onSend }) {
+  const [text, setText] = useState("");
+  const [to, setTo] = useState(kin[0]?.id || "");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  // keep `to` valid as kin list changes
+  useEffect(() => {
+    if (kin.length === 0) {
+      setTo("");
+    } else if (!kin.find((k) => k.id === to)) {
+      setTo(kin[0].id);
+    }
+  }, [kin, to]);
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (busy) return;
+    const body = text.trim();
+    if (!body) return;
+    if (!to) {
+      setErr("no recipient");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    try {
+      await onSend(to, body);
+      setText("");
+    } catch (e) {
+      setErr(e.message || "send failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const noKin = kin.length === 0;
+
+  return (
+    <form className="composer" onSubmit={submit}>
+      <span className="composer-from">
+        <span className="composer-from-label">from</span>
+        <span className="composer-from-name">{me}</span>
+      </span>
+      <span className="composer-to-label">→</span>
+      <select
+        className="composer-to"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        disabled={busy || noKin}
+      >
+        {noKin && <option value="">(no kin to message)</option>}
+        {kin.map((k) => (
+          <option key={k.id} value={k.id}>
+            {k.name}
+          </option>
+        ))}
+      </select>
+      <input
+        className="composer-input"
+        placeholder={noKin ? "claim a kin to start the conversation" : `message ${to || "kin"}…`}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setErr("");
+        }}
+        disabled={busy || noKin}
+      />
+      <button
+        className="composer-send"
+        type="submit"
+        disabled={busy || noKin || !text.trim()}
+      >
+        {busy ? "sending…" : "send"}
+      </button>
+      {err && <span className="composer-err">{err}</span>}
+    </form>
   );
 }
