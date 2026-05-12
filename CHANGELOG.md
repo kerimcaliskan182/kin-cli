@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.3 — 2026-05-13
+
+Patch — DM-thread filter in the viewer (h/t Oğuzhan for the feedback).
+
+### Added
+- **Conversation-with-kin mode.** Clicking a kin in the sidebar now enters a DM thread: the message stream filters to just messages between the human user and that kin (either direction), and the composer locks its recipient to that kin. The topbar gains a pill `→ <avatar> <name> ×` showing the active conversation; click the × (or the `#msgbus` channel name) to exit DM mode and see the full bus again.
+- **Server: `to` field on every message.** `/api/messages` and the SSE snapshot now include `to` for each message, derived from the message JSON's `to` field if present, otherwise from the inbox owner (the directory the message was found in). Without this field the DM filter couldn't distinguish "kuzgun → me" from "kuzgun → tycho".
+
+### Notes
+- The mock "Kepler is writing…" typing indicator is hidden when DM mode is active. (Real presence-of-typing detection remains a future server feature.)
+- Per-kin filter chips above the stream still work and have their original semantics (show messages whose sender is the chosen kin). DM mode takes priority when both are active.
+
 ## v1.1.2 — 2026-05-13
 
 Patch — markdown rendering in the viewer message stream.

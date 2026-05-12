@@ -1,6 +1,6 @@
 {
   "name": "kin-viewer",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "private": true,
   "type": "module",
   "description": "Self-hosted browser viewer for kin — read-only live view of the local kin msgbus.",

@@ -51,6 +51,11 @@ export function App() {
   const [search, setSearch] = useState("");
   const [filterKinId, setFilterKinId] = useState(null);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  // DM thread mode: when set, the message stream filters to just messages
+  // between `me` and `dmKinId` (either direction), and the composer locks
+  // its recipient to that kin. Cleared by clicking the × on the topbar
+  // indicator or by clicking the "msgbus" channel name.
+  const [dmKinId, setDmKinId] = useState(null);
 
   // The human's own claimed kin name. Persisted in localStorage so reload
   // doesn't force them to re-claim. Cleared on /api/claim failure or manual
@@ -127,9 +132,26 @@ export function App() {
   );
 
   const selectedKin = kin.find((k) => k.id === selectedKinId) || kin[0] || null;
+  const dmKin = dmKinId ? kin.find((k) => k.id === dmKinId) || null : null;
 
   const isEmpty = kin.length === 0;
   const rightOpen = rightPanelOpen && !isEmpty && !!selectedKin;
+
+  // Sidebar click does the natural thing: pick this kin AND start a DM
+  // thread with them. Clears prior DM selection if any.
+  const handleSelectKin = useCallback((id) => {
+    setSelectedKinId(id);
+    setDmKinId(id);
+  }, []);
+
+  // If the DM target is no longer in the kin list (or me un-claimed),
+  // exit DM mode so the user doesn't get stuck on an empty stream.
+  useEffect(() => {
+    if (dmKinId && !kin.find((k) => k.id === dmKinId)) setDmKinId(null);
+  }, [kin, dmKinId]);
+  useEffect(() => {
+    if (!me) setDmKinId(null);
+  }, [me]);
 
   // Other kin = everyone except "me"; humans can't send to themselves.
   const otherKin = useMemo(
@@ -144,7 +166,7 @@ export function App() {
       <Sidebar
         kin={kin}
         selectedId={selectedKinId}
-        onSelect={setSelectedKinId}
+        onSelect={handleSelectKin}
         unreadByKin={unreadByKin}
       />
       {isEmpty ? (
@@ -176,6 +198,8 @@ export function App() {
             onToggleRight={() => setRightPanelOpen((v) => !v)}
             theme={theme}
             onToggleTheme={toggleTheme}
+            dmKin={dmKin}
+            onExitDm={() => setDmKinId(null)}
           />
           <FilterChips
             kin={kin}
@@ -188,11 +212,18 @@ export function App() {
             now={now}
             filterKinId={filterKinId}
             search={search}
-            onSelectKin={setSelectedKinId}
+            onSelectKin={handleSelectKin}
             animateLast={false}
+            dmKinId={dmKinId}
+            me={me}
           />
           {me ? (
-            <Composer me={me} kin={otherKin} onSend={send} />
+            <Composer
+              me={me}
+              kin={otherKin}
+              onSend={send}
+              lockedTo={dmKinId}
+            />
           ) : (
             <ClaimBanner onClaim={claim} />
           )}
@@ -219,25 +250,50 @@ function Topbar({
   onToggleRight,
   theme,
   onToggleTheme,
+  dmKin,
+  onExitDm,
   disabled,
 }) {
   return (
     <div className="topbar">
-      <div className="channel">
+      <button
+        className="channel"
+        onClick={() => dmKin && onExitDm && onExitDm()}
+        title={dmKin ? "exit conversation, back to msgbus" : undefined}
+        style={{ cursor: dmKin ? "pointer" : "default" }}
+      >
         <span className="hash">
           <Icon.Hash />
         </span>
         <span>{channelName}</span>
-      </div>
-      <span className="channel-meta">
-        {disabled ? (
-          "no kin yet"
-        ) : (
-          <>
-            {kinOnline} of {kinTotal} online
-          </>
-        )}
-      </span>
+      </button>
+      {dmKin ? (
+        <span className="dm-indicator">
+          <span className="dm-arrow">→</span>
+          <span className="dm-kin">
+            <Avatar kin={dmKin} size="sm" />
+            <span className="dm-kin-name">{dmKin.name}</span>
+          </span>
+          <button
+            className="dm-clear"
+            onClick={onExitDm}
+            title="exit conversation"
+            aria-label="exit conversation"
+          >
+            <Icon.X />
+          </button>
+        </span>
+      ) : (
+        <span className="channel-meta">
+          {disabled ? (
+            "no kin yet"
+          ) : (
+            <>
+              {kinOnline} of {kinTotal} online
+            </>
+          )}
+        </span>
+      )}
       <span className="spacer" />
       <div className="search">
         <Icon.Search />
@@ -358,11 +414,16 @@ function ClaimBanner({ onClaim }) {
 }
 
 // ---- composer: send a message ----
-function Composer({ me, kin, onSend }) {
+function Composer({ me, kin, onSend, lockedTo }) {
   const [text, setText] = useState("");
-  const [to, setTo] = useState(kin[0]?.id || "");
+  const [to, setTo] = useState(lockedTo || kin[0]?.id || "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // when DM mode locks the recipient, follow it
+  useEffect(() => {
+    if (lockedTo) setTo(lockedTo);
+  }, [lockedTo]);
 
   // keep `to` valid as kin list changes
   useEffect(() => {
@@ -407,7 +468,8 @@ function Composer({ me, kin, onSend }) {
         className="composer-to"
         value={to}
         onChange={(e) => setTo(e.target.value)}
-        disabled={busy || noKin}
+        disabled={busy || noKin || !!lockedTo}
+        title={lockedTo ? "recipient locked by DM mode" : undefined}
       >
         {noKin && <option value="">(no kin to message)</option>}
         {kin.map((k) => (

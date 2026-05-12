@@ -192,7 +192,10 @@ async function readMessages() {
   for (const name of kinDirs) {
     // a kin's inbox holds messages addressed TO them. archive is messages
     // they've already read. The viewer doesn't distinguish; both are part
-    // of the conversation history. Group by sender (from), not by box owner.
+    // of the conversation history. We pass the inbox owner as the message
+    // recipient — if the raw JSON doesn't carry an explicit `to` field
+    // (legacy kin_send writes from before v1.1.3) the file path is the
+    // source of truth.
     for (const sub of ["inbox", "archive"]) {
       const subDir = path.join(AGENTS_DIR, name, sub);
       const files = await lsSafe(subDir);
@@ -200,7 +203,7 @@ async function readMessages() {
         if (!f.isFile() || !f.name.endsWith(".json")) continue;
         const msg = await readJsonSafe(path.join(subDir, f.name));
         if (!msg) continue;
-        out.push(normalizeMessage(msg, f.name));
+        out.push(normalizeMessage(msg, f.name, name));
       }
     }
   }
@@ -210,16 +213,17 @@ async function readMessages() {
   return [...byId.values()].sort((a, b) => a.time - b.time);
 }
 
-function normalizeMessage(raw, fileName) {
+function normalizeMessage(raw, fileName, owner) {
   const id = raw.id || fileName.replace(/\.json$/, "");
   const kin = raw.from || raw.sender || raw.kin || "unknown";
+  const to = raw.to || raw.recipient || owner || null;
   const time = raw.sent_at
     ? new Date(raw.sent_at).getTime()
     : raw.time
     ? new Date(raw.time).getTime()
     : 0;
   const body = raw.body || raw.text || raw.message || "";
-  return { id, kin, time, body, quotedId: raw.quotedId || raw.reply_to };
+  return { id, kin, to, time, body, quotedId: raw.quotedId || raw.reply_to };
 }
 
 // ---- snapshot + delta ----

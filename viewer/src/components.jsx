@@ -161,7 +161,7 @@ export function Sidebar({ kin, selectedId, onSelect, unreadByKin }) {
         <span className="brand-mark">
           kin<span className="dot">.</span>
         </span>
-        <span className="brand-meta">v1.1.2</span>
+        <span className="brand-meta">v1.1.3</span>
       </div>
 
       <div className="workspace">
@@ -216,6 +216,8 @@ export function MessageStream({
   search,
   onSelectKin,
   animateLast,
+  dmKinId,
+  me,
 }) {
   const kinById = useMemo(
     () => Object.fromEntries(kin.map((k) => [k.id, k])),
@@ -227,7 +229,16 @@ export function MessageStream({
   );
 
   const filtered = messages.filter((m) => {
-    if (filterKinId && m.kin !== filterKinId) return false;
+    // DM mode takes priority over the per-kin filter chip: when active,
+    // only show messages between `me` and `dmKinId` (either direction).
+    if (dmKinId && me) {
+      const isDmPair =
+        (m.kin === me && m.to === dmKinId) ||
+        (m.kin === dmKinId && m.to === me);
+      if (!isDmPair) return false;
+    } else if (filterKinId && m.kin !== filterKinId) {
+      return false;
+    }
     if (search && !m.body.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -353,8 +364,10 @@ export function MessageStream({
         );
       })}
 
-      {/* typing indicator (only when no filter/search applied) */}
-      {!filterKinId && !search && (
+      {/* typing indicator — hidden in DM mode and when filtering/searching.
+          v1.1.3: still a static mock; real presence-of-typing detection is
+          a future server-side feature. */}
+      {!filterKinId && !search && !dmKinId && (
         <div className="typing">
           <span>Kepler is writing</span>
           <span className="dots">
