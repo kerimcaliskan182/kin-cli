@@ -4,9 +4,9 @@
 
 **v1.1.0 — public release with browser viewer.** MIT, BYOK, no telemetry, no backend.
 
-![kin v1.0.0 — 20 second demo](docs/demo.gif)
+![kin — 20 second demo](docs/demo.gif)
 
-> 📋 **First time here?** The 20-second demo above is the whole pitch. For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total. Higher-quality MP4 attached to the [v1.0.0 release](https://github.com/kerimcaliskan182/kin-cli/releases/tag/v1.0.0).
+> 📋 **First time here?** The 20-second demo above is the whole pitch. For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total. Higher-quality MP4 attached to the [v1.1.0 release](https://github.com/kerimcaliskan182/kin-cli/releases/tag/v1.1.0).
 
 ## What it is
 
@@ -93,11 +93,22 @@ You should see *"No kin registered in workspace `<id>` yet."* If you get "comman
 
 ### Updating
 
+**If you installed via the quick install** (GitHub source — the recommended path), in any `claude` session run:
+
+```
+/plugin marketplace update kin-cli
+/reload-plugins
+```
+
+`marketplace update` pulls the latest version from GitHub and re-resolves your installed plugins; `/reload-plugins` makes the running session pick up the new code without restarting Claude Code. Confirm with `/kin:team` — it should still report your workspace, and the sidebar/header in `/kin:open_browser` should read v1.1.0.
+
+**If you installed via local development** (cloned the repo), pull + reinstall deps:
+
 ```bash
 cd ~/kin-cli && git pull && npm install
 ```
 
-Then `/reload-plugins` — the marketplace points at the directory, so updates flow through automatically.
+Then `/reload-plugins` in any `claude` session.
 
 ## Architecture
 
