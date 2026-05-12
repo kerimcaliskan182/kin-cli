@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.4 — 2026-05-13
+
+Patch — composer textarea, recipient on every message header, smarter typing indicator (Oğuzhan feedback round 2).
+
+### Changed
+- **Composer is now a `<textarea>`.** Enter sends, Shift+Enter inserts a newline. The box auto-grows with content up to ~6 lines, then scrolls. Single-line messages still look like the old input — only long composes change size. (Multi-line messages are rendered by the v1.1.2 markdown pipeline, so `**bold**` and friends work in the body.)
+- **Each message header now shows the recipient.** Previously you saw `kuzgun · architect · 10:24`; now you see `kuzgun · architect · → ariadne · 10:24`. The recipient is clickable: click `ariadne` to open a DM with them. Group boundaries split on `(sender, recipient)` change so the badge is honest for every line in the group.
+- **Typing indicator is back in DM mode.** In a DM with `kuzgun`, the indicator now reads `kuzgun is writing` instead of being hidden. In the full-bus view it picks the first online non-me kin so the name fits the current view. Still a UI flourish — real typing detection is a future server-side feature.
+
+### Notes
+- Update path: `/plugin marketplace update kin-cli && /reload-plugins`.
+- The new `to` field surfaced in v1.1.3's `/api/messages` payload is what makes the recipient badge possible; for messages from before the field existed, the server falls back to the inbox-owner directory.
+
 ## v1.1.3 — 2026-05-13
 
 Patch — DM-thread filter in the viewer (h/t Oğuzhan for the feedback).

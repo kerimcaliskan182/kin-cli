@@ -161,7 +161,7 @@ export function Sidebar({ kin, selectedId, onSelect, unreadByKin }) {
         <span className="brand-mark">
           kin<span className="dot">.</span>
         </span>
-        <span className="brand-meta">v1.1.3</span>
+        <span className="brand-meta">v1.1.4</span>
       </div>
 
       <div className="workspace">
@@ -243,17 +243,27 @@ export function MessageStream({
     return true;
   });
 
-  // group consecutive messages from same kin within 4 minutes
+  // group consecutive messages from same (sender, recipient) within 4 min.
+  // Same-sender different-recipient breaks the group so the "→ to" badge
+  // in the header is honest for every line in the group.
   const groups = [];
   filtered.forEach((m, i) => {
     const prev = filtered[i - 1];
     const cont =
       prev &&
       prev.kin === m.kin &&
+      prev.to === m.to &&
       m.time - prev.time < 4 * 60 * 1000 &&
       !m.quotedId;
     if (cont) groups[groups.length - 1].msgs.push(m);
-    else groups.push({ kin: kinById[m.kin], time: m.time, msgs: [m] });
+    else
+      groups.push({
+        kin: kinById[m.kin],
+        toKin: m.to ? kinById[m.to] : null,
+        toRaw: m.to || null,
+        time: m.time,
+        msgs: [m],
+      });
   });
 
   // day dividers
@@ -341,6 +351,23 @@ export function MessageStream({
                           {g.kin.name}
                         </button>
                         <span className="role">{g.kin.role}</span>
+                        {(g.toKin || g.toRaw) && (
+                          <span className="msg-to">
+                            <span className="msg-to-arrow">→</span>
+                            {g.toKin ? (
+                              <button
+                                className="msg-to-name"
+                                onClick={() => onSelectKin(g.toKin.id)}
+                                title="open conversation"
+                                style={{ cursor: "pointer" }}
+                              >
+                                {g.toKin.name}
+                              </button>
+                            ) : (
+                              <span className="msg-to-name">{g.toRaw}</span>
+                            )}
+                          </span>
+                        )}
                         <span className="time">
                           {hhmm(m.time)} · {relTime(m.time, now)}
                         </span>
@@ -364,19 +391,27 @@ export function MessageStream({
         );
       })}
 
-      {/* typing indicator — hidden in DM mode and when filtering/searching.
-          v1.1.3: still a static mock; real presence-of-typing detection is
-          a future server-side feature. */}
-      {!filterKinId && !search && !dmKinId && (
-        <div className="typing">
-          <span>Kepler is writing</span>
-          <span className="dots">
-            <span />
-            <span />
-            <span />
-          </span>
-        </div>
-      )}
+      {/* typing indicator. v1.1.4: shown in DM mode (named after the DM
+          partner), otherwise picks the first online non-me kin so the
+          name makes sense for the current view. Still a UI flourish —
+          real presence-of-typing detection is a server-side feature
+          for a later release. */}
+      {!filterKinId && !search && (() => {
+        const typingKin = dmKinId
+          ? kinById[dmKinId]
+          : kin.find((k) => k.status === "online" && k.id !== me);
+        if (!typingKin) return null;
+        return (
+          <div className="typing">
+            <span>{typingKin.name} is writing</span>
+            <span className="dots">
+              <span />
+              <span />
+              <span />
+            </span>
+          </div>
+        );
+      })()}
 
       <button
         className="jump-latest"

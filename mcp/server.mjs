@@ -161,7 +161,7 @@ async function readMemoryIndex(name) {
 
 const server = new McpServer({
   name: "kin",
-  version: "1.1.3",
+  version: "1.1.4",
 });
 
 server.registerTool(

@@ -805,7 +805,7 @@ input, textarea {
   padding: 12px 20px;
   background: var(--bg-0);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
   flex-shrink: 0;
   font-family: var(--font-mono);
@@ -868,9 +868,15 @@ input, textarea {
   color: var(--fg-0);
   font-family: var(--font-sans);
   font-size: 13px;
-  padding: 6px 10px;
+  line-height: 1.5;
+  padding: 7px 10px;
   outline: none;
   transition: border-color 120ms ease;
+  /* textarea-specific */
+  resize: none;
+  min-height: 32px;
+  max-height: 156px;
+  overflow-y: auto;
 }
 
 .composer-input::placeholder { color: var(--fg-3); }
@@ -1146,4 +1152,36 @@ button.channel:hover {
 }
 [data-theme="light"] .dm-clear:hover {
   background: rgba(0, 0, 0, 0.06);
+}
+
+/* =================== message recipient badge (v1.1.4) =================== */
+
+.msg-group-meta .msg-to {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-2);
+}
+
+.msg-to-arrow {
+  color: var(--fg-3);
+}
+
+.msg-to-name {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--fg-1);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.msg-to-name:hover {
+  color: var(--fg-0);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

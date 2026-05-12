@@ -419,6 +419,7 @@ function Composer({ me, kin, onSend, lockedTo }) {
   const [to, setTo] = useState(lockedTo || kin[0]?.id || "");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const textareaRef = useRef(null);
 
   // when DM mode locks the recipient, follow it
   useEffect(() => {
@@ -433,6 +434,14 @@ function Composer({ me, kin, onSend, lockedTo }) {
       setTo(kin[0].id);
     }
   }, [kin, to]);
+
+  // auto-grow textarea height with content, capped at ~6 lines via CSS max-height
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, [text]);
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -478,14 +487,26 @@ function Composer({ me, kin, onSend, lockedTo }) {
           </option>
         ))}
       </select>
-      <input
+      <textarea
+        ref={textareaRef}
         className="composer-input"
-        placeholder={noKin ? "claim a kin to start the conversation" : `message ${to || "kin"}…`}
+        placeholder={
+          noKin
+            ? "claim a kin to start the conversation"
+            : `message ${to || "kin"}…  (Enter to send · Shift+Enter for newline)`
+        }
         value={text}
         onChange={(e) => {
           setText(e.target.value);
           setErr("");
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            submit(e);
+          }
+        }}
+        rows={1}
         disabled={busy || noKin}
       />
       <button
