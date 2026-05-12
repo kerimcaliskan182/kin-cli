@@ -161,7 +161,7 @@ export function Sidebar({ kin, selectedId, onSelect, unreadByKin }) {
         <span className="brand-mark">
           kin<span className="dot">.</span>
         </span>
-        <span className="brand-meta">v1.1.6</span>
+        <span className="brand-meta">v1.1.7</span>
       </div>
 
       <div className="workspace">
@@ -229,15 +229,20 @@ export function MessageStream({
   );
 
   const filtered = messages.filter((m) => {
-    // DM mode takes priority over the per-kin filter chip: when active,
-    // only show messages between `me` and `dmKinId` (either direction).
+    // Two filter modes, mutually exclusive in the UI:
+    //   1. DM mode (sidebar click): strict pair, `me` ↔ `dmKinId` only.
+    //   2. Filter chip (top of stream): "involving" semantic — messages
+    //      where the chosen kin is sender OR recipient. The previous
+    //      from===kinId version hid the user's own messages to that kin,
+    //      which was confusing (Oğuzhan: "kuzgun filtresi attım, kendi
+    //      attığım mesajı göremiyom").
     if (dmKinId && me) {
       const isDmPair =
         (m.kin === me && m.to === dmKinId) ||
         (m.kin === dmKinId && m.to === me);
       if (!isDmPair) return false;
-    } else if (filterKinId && m.kin !== filterKinId) {
-      return false;
+    } else if (filterKinId) {
+      if (m.kin !== filterKinId && m.to !== filterKinId) return false;
     }
     if (search && !m.body.toLowerCase().includes(search.toLowerCase())) return false;
     return true;

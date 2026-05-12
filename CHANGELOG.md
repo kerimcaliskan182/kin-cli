@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.7 — 2026-05-13
+
+Patch — filter chip semantics now match Slack expectations (Oğuzhan: "kuzgun filtresi attım, kendi attığım mesajı göremiyom").
+
+### Changed
+- **Filter chips are now bidirectional.** Clicking a kin in the filter row above the stream shows every message **involving** that kin — sender OR recipient — not just messages from them. The old "from===kin only" version hid your own outbound messages to the selected kin, which is the opposite of what every chat app does.
+- **"all" chip clears both filter modes.** If you got into DM mode by clicking a kin in the sidebar, clicking the `all` chip now also exits DM mode. One button, one mental model: "back to full feed".
+- **Filter chips and DM mode are mutually exclusive in the UI.** Clicking a filter chip clears the DM mode; entering DM mode from the sidebar clears the filter chip. They light up the same way (chip becomes accent-colored when active) so the user sees one consistent "you're focused on kuzgun" signal regardless of which path got you there.
+
+### Notes
+- Filter chip = "everything involving this kin" (looser; works without a claim).
+- Sidebar click = strict `me ↔ kin` DM thread (requires a claim).
+- Update path: `/plugin marketplace update kin-cli && /reload-plugins`.
+
 ## v1.1.6 — 2026-05-13
 
 Patch — composer recipient persists across reloads (Oğuzhan: "ben buna bakmıyorum ki").

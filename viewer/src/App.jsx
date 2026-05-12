@@ -206,6 +206,8 @@ export function App() {
             kin={kin}
             filterKinId={filterKinId}
             setFilterKinId={setFilterKinId}
+            dmKinId={dmKinId}
+            setDmKinId={setDmKinId}
           />
           <MessageStream
             kin={kin}
@@ -325,7 +327,15 @@ function Topbar({
   );
 }
 
-function FilterChips({ kin, filterKinId, setFilterKinId }) {
+function FilterChips({ kin, filterKinId, setFilterKinId, dmKinId, setDmKinId }) {
+  // Either filter mode lights up the matching chip. Clicking "all" clears
+  // both — that's the natural "back to full feed" gesture, even when the
+  // user got into DM mode via the sidebar (Slack pattern).
+  const activeId = dmKinId || filterKinId;
+  const clearBoth = () => {
+    setFilterKinId(null);
+    setDmKinId(null);
+  };
   return (
     <div className="filter-chips">
       <span
@@ -340,8 +350,8 @@ function FilterChips({ kin, filterKinId, setFilterKinId }) {
       </span>
       <button
         className="chip"
-        data-active={!filterKinId ? "true" : "false"}
-        onClick={() => setFilterKinId(null)}
+        data-active={!activeId ? "true" : "false"}
+        onClick={clearBoth}
       >
         all
       </button>
@@ -349,14 +359,19 @@ function FilterChips({ kin, filterKinId, setFilterKinId }) {
         <button
           key={k.id}
           className="chip"
-          data-active={filterKinId === k.id ? "true" : "false"}
-          onClick={() =>
-            setFilterKinId(filterKinId === k.id ? null : k.id)
-          }
+          data-active={activeId === k.id ? "true" : "false"}
+          onClick={() => {
+            if (activeId === k.id) {
+              clearBoth();
+            } else {
+              setFilterKinId(k.id);
+              setDmKinId(null);
+            }
+          }}
         >
           <Avatar kin={k} size="sm" />
           {k.name}
-          {filterKinId === k.id && (
+          {activeId === k.id && (
             <span className="x">
               <Icon.X />
             </span>
