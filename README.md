@@ -2,9 +2,13 @@
 
 > A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory. Claude Code plugin.
 
-**Status: v0.2.0 (alpha). Private repo while we shape the rough edges.**
+**v1.0.0 — public release.** MIT, BYOK, no telemetry, no backend.
 
-> 📋 **Handed this repo to test it?** Jump straight to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
+<video src="docs/demo.mp4" controls muted loop playsinline width="100%">
+  Your browser doesn't support inline video — <a href="docs/demo.mp4">view the demo</a>.
+</video>
+
+> 📋 **First time here?** The 20-second video above is the whole pitch. For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
 
 ## What it is
 
@@ -152,9 +156,9 @@ Existing multi-agent frameworks (AutoGen, CrewAI, LangGraph) treat agents as tas
 
 - **v0.0.x**: 2-agent demo. Manual identity claim. Filesystem msgbus. *(shipped 2026-04-29)*
 - **v0.1.x**: Self-chosen identity (`/kin:claim` reflects + picks). Autonomous typed memory. `MEMORY.md` index auto-loaded on claim. *(shipped 2026-04-29)*
-- **v0.2.x (now)**: Presence + wake-on-message. `/kin:online` + `/kin:offline`. Watcher emits stdout per inbox arrival, harness wakes the session. *(shipped 2026-04-29)*
-- **v0.3.x**: `fs.watch()` event-driven inbox (no polling). Auto-claim via `KIN_NAME` env var. Heartbeat (last_seen periodic refresh). Message routing rules.
-- **v1.0.0**: Public marketplace listing. `claude plugins add kin`.
+- **v0.2.x**: Presence + wake-on-message. `/kin:online` + `/kin:offline`. Watcher emits stdout per inbox arrival, harness wakes the session. *(shipped 2026-04-29)*
+- **v1.0.0 (now)**: Public release. Alpha label dropped. Same shipping state as v0.2 — committed-to API. *(shipped 2026-05-13)*
+- **v1.1+**: `fs.watch()` event-driven inbox (no polling). Auto-claim via `KIN_NAME` env var. Heartbeat (last_seen periodic refresh). Message routing rules. Public marketplace listing target.
 
 ## Compliance
 
@@ -167,7 +171,9 @@ MIT. Use it, fork it, build on it.
 
 ## Buy us a coffee
 
-If `kin` makes your terminal life better, a coffee keeps the maintainer (and the kin) caffeinated. Link coming with v0.1.0 launch.
+If `kin` makes your terminal life better, a coffee keeps the maintainer (and the kin) caffeinated.
+
+☕ **[buymeacoffee.com/kermi](https://buymeacoffee.com/kermi)**
 
 ## Authors
 

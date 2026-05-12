@@ -1,6 +1,6 @@
 {
   "name": "kin",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory.",
   "author": {
     "name": "Kerim Çalışkan",

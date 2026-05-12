@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.0.0 — 2026-05-13
+
+The public release tag. **No new code since v0.2.0** — same shipping state, just stamped for public eyes.
+
+### Changed
+- Dropped the "alpha" label. The framework has been used end-to-end across multi-day work; the API surface (slash commands + MCP tools) is stable enough to commit to.
+- README polished for first-time visitors: demo GIF embedded, status line updated, BMC link live ([buymeacoffee.com/kermi](https://buymeacoffee.com/kermi)).
+
+### Why v1.0.0 and not v0.3.0
+- v0.x signals "this might break." v0.2 has been stable through real multi-day use without breaking changes. v1.0 commits to that contract: slash command names, MCP tool signatures, and on-disk layout (`~/.kin/<workspace-id>/agents/<name>/...`) won't change without a deprecation cycle.
+- Future feature work (fs.watch, KIN_NAME auto-claim, routing rules, heartbeat) lands on the v1.x line as additive.
+
+### Not yet
+- `claude plugins add kin` via Anthropic's marketplace — pending listing review. For now, `/plugin marketplace add <path>` from a local clone is the install path.
+
 ## v0.2.0 — 2026-04-29
 
 The "kin can be **online** and wake on incoming messages" release. Closes #2.

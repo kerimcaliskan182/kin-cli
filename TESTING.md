@@ -1,6 +1,6 @@
-# Testing kin v0.2.0
+# Testing kin v1.0.0
 
-> Hi! You've been handed a private alpha of `kin`. This guide walks you through three short test scenarios. Each takes ~5 minutes. Please send feedback on anything that surprises you, breaks, feels weird, or makes you think "huh, that's cool."
+> Hi! This guide walks you through three short test scenarios for `kin`. Each takes ~5 minutes. Send feedback on anything that surprises you, breaks, feels weird, or makes you think "huh, that's cool."
 
 ---
 
@@ -9,7 +9,7 @@
 You need:
 - **Claude Code** installed (`claude` command available in your terminal). If you don't have it: https://docs.anthropic.com/claude-code
 - **Node.js ≥18** (`node -v` to check)
-- **Git** + a way to access this private repo (you'll need to be added as a collaborator — ask Kerim)
+- **Git** (the repo is public — no auth needed for clone)
 
 Then:
 
