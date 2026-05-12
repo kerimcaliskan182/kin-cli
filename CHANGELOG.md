@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.1.8 — 2026-05-13
+
+Patch — viewer CPU + process hygiene (Oğuzhan: "çok CPU yiyor, node process'leri açık kalıyor").
+
+### Fixed
+- **Singleton check.** The server now writes a workspace-scoped PID file at `~/.kin/<workspace-id>/.viewer.pid` on boot. A second `/kin:open_browser` for the same workspace detects the running instance, opens the browser to its URL, and exits cleanly — no more stacking node processes.
+- **Adaptive polling.** Filesystem snapshot polling only runs while at least one SSE subscriber is connected. When the last viewer tab disconnects, the poll loop pauses; the next connection resumes it. Idle CPU goes to roughly zero.
+- **Idle auto-shutdown.** If no tabs have been connected for 5 minutes, the server exits and cleans up its PID file. Laptop fans stay quiet when you forget about it.
+- **Poll interval bumped 1000ms → 1500ms.** Honest "live" feel without needing sub-second freshness for a developer dashboard.
+- **Clean EADDRINUSE message.** If the port is held by a stranger process the server now prints a useful hint instead of an unhandled stack trace.
+
+### Added
+- **`/kin:close_browser`** — new slash command that signals SIGTERM to the running viewer for the current workspace. Idempotent. Workspace-scoped (won't touch other projects' viewers).
+- **`viewer/stop.mjs`** — the script the new slash command runs. Reads the PID file, sends signal, cleans up if the PID was already dead.
+
+### Notes
+- The PID file is gitignored — it lives outside the repo at `~/.kin/<workspace-id>/.viewer.pid`.
+- Update path: `/plugin marketplace update kin-cli && /reload-plugins`.
+- If a stale instance is somehow blocking port 7427 even after `/kin:close_browser`, kill it the OS way (Task Manager / `kill <pid>`) — the PID file gives you the number.
+
 ## v1.1.7 — 2026-05-13
 
 Patch — filter chip semantics now match Slack expectations (Oğuzhan: "kuzgun filtresi attım, kendi attığım mesajı göremiyom").

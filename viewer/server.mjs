@@ -15,7 +15,7 @@
 // Default port 7427 (override via KIN_VIEWER_PORT).
 
 import http from "node:http";
-import { promises as fsp } from "node:fs";
+import { promises as fsp, unlinkSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
@@ -28,11 +28,16 @@ const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.KIN_VIEWER_PORT) || 7427;
 const HOST = "127.0.0.1";
-const POLL_MS = 1000;
+const POLL_MS = 1500;
+// Auto-shutdown after this many ms with zero connected viewers. Keeps
+// laptop fans quiet when the user has long since closed the tab but
+// forgot to /kin:close_browser.
+const IDLE_SHUTDOWN_MS = 5 * 60 * 1000;
 
 const DIST_DIR = path.join(__dirname, "dist");
 const WORKSPACE_DIR = workspaceDir(process.cwd());
 const AGENTS_DIR = path.join(WORKSPACE_DIR, "agents");
+const PID_FILE = path.join(WORKSPACE_DIR, ".viewer.pid");
 
 // Deterministic-ish color palette for kin avatars. Same algorithm the design
 // suggested: stable hash on kin.id → palette index. Muted/desaturated only.
@@ -257,8 +262,14 @@ function broadcast(event, payload) {
   }
 }
 
+// Adaptive polling: only run while at least one SSE subscriber is
+// connected. When the last viewer disconnects we pause; when the next
+// one connects we resume. This drops idle CPU to roughly nothing.
 let lastSig = "";
-async function pollLoop() {
+let pollTimer = null;
+let lastSubscriberTime = Date.now();
+
+async function pollOnce() {
   try {
     const snap = await fullSnapshot();
     const sig = signature(snap);
@@ -269,7 +280,30 @@ async function pollLoop() {
   } catch (e) {
     // swallow — don't crash the loop on filesystem hiccups
   }
-  setTimeout(pollLoop, POLL_MS);
+}
+
+async function pollLoop() {
+  if (subscribers.size === 0) {
+    pollTimer = null;
+    return;
+  }
+  await pollOnce();
+  pollTimer = setTimeout(pollLoop, POLL_MS);
+}
+
+function ensurePolling() {
+  if (!pollTimer && subscribers.size > 0) pollLoop();
+}
+
+// Idle auto-shutdown check — runs once a minute, exits if no
+// subscribers for > IDLE_SHUTDOWN_MS.
+function startIdleWatcher() {
+  setInterval(() => {
+    if (subscribers.size === 0 && Date.now() - lastSubscriberTime > IDLE_SHUTDOWN_MS) {
+      console.log("kin viewer — idle for 5 min, shutting down");
+      gracefulShutdown(0);
+    }
+  }, 60 * 1000);
 }
 
 // ---- HTTP routing ----
@@ -440,7 +474,12 @@ const server = http.createServer(async (req, res) => {
     const snap = await fullSnapshot();
     res.write(`event: snapshot\ndata: ${JSON.stringify(snap)}\n\n`);
     subscribers.add(res);
-    req.on("close", () => subscribers.delete(res));
+    lastSubscriberTime = Date.now();
+    ensurePolling();
+    req.on("close", () => {
+      subscribers.delete(res);
+      lastSubscriberTime = Date.now();
+    });
     return;
   }
   return serveStatic(req, res);
@@ -463,23 +502,106 @@ function openBrowser(url) {
   }
 }
 
+// ---- singleton check (avoid stacking node processes) ----
+
+// If a previous viewer is already running for THIS workspace, don't start a
+// second one. Just open the browser to the existing URL and exit. The PID
+// file is workspace-scoped (lives under ~/.kin/<workspace>/.viewer.pid) so
+// multiple workspaces can still each run their own viewer.
+async function checkExistingInstance() {
+  let pidInfo;
+  try {
+    const raw = await fsp.readFile(PID_FILE, "utf8");
+    pidInfo = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  const { pid, port } = pidInfo || {};
+  if (!pid || !Number.isInteger(pid)) return false;
+  try {
+    process.kill(pid, 0); // signal 0 = liveness check
+  } catch {
+    // stale pid file — clean up and proceed with a fresh start
+    await fsp.unlink(PID_FILE).catch(() => {});
+    return false;
+  }
+  const url = `http://${HOST}:${port || PORT}/`;
+  console.log(`kin viewer — already running (PID ${pid}) — ${url}`);
+  console.log(`workspace ${workspaceId(process.cwd())}`);
+  if (process.env.KIN_VIEWER_NO_OPEN !== "1") openBrowser(url);
+  return true;
+}
+
+async function writePidFile() {
+  await fsp.mkdir(WORKSPACE_DIR, { recursive: true });
+  await fsp.writeFile(
+    PID_FILE,
+    JSON.stringify({ pid: process.pid, port: PORT, started_at: new Date().toISOString() })
+  );
+}
+
+async function removePidFile() {
+  await fsp.unlink(PID_FILE).catch(() => {});
+}
+
 // ---- boot ----
 
-server.listen(PORT, HOST, () => {
-  const url = `http://${HOST}:${PORT}/`;
-  // eslint-disable-next-line no-console
-  console.log(`kin viewer — ${url}`);
-  console.log(`workspace ${workspaceId(process.cwd())}`);
-  console.log(`reading   ${WORKSPACE_DIR}`);
-  if (process.env.KIN_VIEWER_NO_OPEN !== "1") openBrowser(url);
-  pollLoop();
-});
-
-// graceful shutdown
-for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, () => {
-    console.log(`\nkin viewer — ${sig}, shutting down`);
-    for (const r of subscribers) try { r.end(); } catch {}
-    server.close(() => process.exit(0));
+async function boot() {
+  if (await checkExistingInstance()) {
+    process.exit(0);
+  }
+  await writePidFile();
+  server.listen(PORT, HOST, () => {
+    const url = `http://${HOST}:${PORT}/`;
+    console.log(`kin viewer — ${url}`);
+    console.log(`workspace ${workspaceId(process.cwd())}`);
+    console.log(`reading   ${WORKSPACE_DIR}`);
+    if (process.env.KIN_VIEWER_NO_OPEN !== "1") openBrowser(url);
+    // start the idle watcher; polling will engage on the first SSE
+    // subscriber. Until then we burn no CPU.
+    startIdleWatcher();
+  });
+  server.on("error", async (e) => {
+    if (e.code === "EADDRINUSE") {
+      console.error(`kin viewer — port ${PORT} already in use. Set KIN_VIEWER_PORT to override, or run /kin:close_browser if a stale instance is holding it.`);
+    } else {
+      console.error("kin viewer —", e.message);
+    }
+    await removePidFile();
+    process.exit(1);
   });
 }
+
+// ---- graceful shutdown ----
+
+let shuttingDown = false;
+function gracefulShutdown(code = 0) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  for (const r of subscribers) try { r.end(); } catch {}
+  // best-effort sync cleanup so even SIGKILL-flavored exits drop the file
+  try {
+    // dynamic import is async, but unlinkSync is sync — use it through the
+    // already-imported fs module for the exit path.
+    // eslint-disable-next-line no-empty
+  } catch {}
+  removePidFile().finally(() => {
+    server.close(() => process.exit(code));
+    // hard timeout — close() can hang on lingering keep-alive sockets
+    setTimeout(() => process.exit(code), 1500).unref();
+  });
+}
+
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(sig, () => {
+    console.log(`\nkin viewer — ${sig}, shutting down`);
+    gracefulShutdown(0);
+  });
+}
+
+process.on("exit", () => {
+  // best-effort sync cleanup for crashes / sudden exits
+  try { unlinkSync(PID_FILE); } catch {}
+});
+
+boot();

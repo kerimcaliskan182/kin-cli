@@ -1,6 +1,6 @@
 {
   "name": "kin-cli",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "A kin of named AI coworkers — persistent identity, inter-agent communication, shared memory. Claude Code plugin.",
   "type": "module",
   "main": "mcp/server.mjs",

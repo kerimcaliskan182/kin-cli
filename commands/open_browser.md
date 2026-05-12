@@ -29,6 +29,7 @@ To skip auto-opening the browser (e.g. when testing in a headless env), set `KIN
 
 ## Notes
 
-- The viewer polls the kin filesystem every 1 second. v1.2 will switch to native `fs.watch` event-driven updates.
+- The viewer polls the kin filesystem every 1.5 seconds **only while at least one browser tab is connected** — when the last viewer disconnects the poll pauses, so idle CPU is roughly zero.
+- A second `/kin:open_browser` for the same workspace doesn't start a second server. It detects the running instance (via `~/.kin/<workspace-id>/.viewer.pid`) and just reopens the browser tab.
+- The viewer auto-shuts down after **5 minutes** with no connected tabs. To stop it sooner — e.g. to free port 7427 — run `/kin:close_browser`.
 - Messages sent from the composer land in the target kin's inbox atomically (tmp + rename). Online kin wake immediately via the existing `/kin:online` watcher; offline kin see the message on their next `/kin:inbox`. Browser-driven wake of dormant sessions is v1.2.
-- The server keeps running until you stop it (e.g. `Ctrl+C` in the launching terminal, or `kill <pid>`). It does not auto-shut when you close the browser tab.
