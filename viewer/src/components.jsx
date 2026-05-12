@@ -1,4 +1,40 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { marked } from "marked";
+
+// ---- markdown setup ----
+// We pre-configure marked once: GFM dialect, breaks=true so single newlines
+// become <br> (matches how people type chat-style), and a custom renderer
+// that (a) preserves the existing "ref" highlighting for file paths /
+// line refs / 7-char SHAs, and (b) makes outbound links open in a new tab
+// with rel="noopener" so the local viewer can't be re-navigated.
+const REF_PATH = /^[\w./-]+\.\w+(:\d+)?$/;
+const REF_SHA = /^[a-f0-9]{7}$/i;
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+marked.use({
+  gfm: true,
+  breaks: true,
+  renderer: {
+    codespan({ text }) {
+      if (REF_PATH.test(text) || REF_SHA.test(text)) {
+        return `<span class="ref">${escapeHtml(text)}</span>`;
+      }
+      return `<code>${escapeHtml(text)}</code>`;
+    },
+    link({ href, tokens }) {
+      // recursively render the link text via marked's inline parser
+      const text = this.parser.parseInline(tokens);
+      return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    },
+  },
+});
 
 // ---- helpers ----
 export function relTime(then, now) {
@@ -125,7 +161,7 @@ export function Sidebar({ kin, selectedId, onSelect, unreadByKin }) {
         <span className="brand-mark">
           kin<span className="dot">.</span>
         </span>
-        <span className="brand-meta">v1.1.1</span>
+        <span className="brand-meta">v1.1.2</span>
       </div>
 
       <div className="workspace">
@@ -346,15 +382,12 @@ export function MessageStream({
   );
 }
 
-// turn `back-ticks` into <code>, and `path/file.ext:NN` or 7-char shas into refs
+// Render a message body as HTML. Goes through marked (GFM, line-breaks-as-<br>)
+// with a custom renderer that preserves the "ref" treatment for path/line
+// and SHA backtick spans, and forces all outbound links to a new tab.
 function formatBody(s) {
-  const esc = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return esc.replace(/`([^`]+)`/g, (_, t) => {
-    if (/^[\w./]+\.\w+(:\d+)?$/.test(t) || /^[a-f0-9]{7}$/i.test(t)) {
-      return `<span class="ref">${t}</span>`;
-    }
-    return `<code>${t}</code>`;
-  });
+  if (!s) return "";
+  return marked.parse(String(s), { async: false });
 }
 
 // ---- right panel ----

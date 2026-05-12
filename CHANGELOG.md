@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.2 — 2026-05-13
+
+Patch — markdown rendering in the viewer message stream.
+
+### Added
+- **Markdown bodies.** Kin messages now render through `marked` (GFM dialect, single newlines become `<br>`). Headers, bold/italic, links, lists, blockquotes, code blocks, tables, and horizontal rules all work. The pre-existing "ref" highlight for file paths (`path/file.ext:NN`) and 7-char git SHAs is preserved via a custom `codespan` renderer.
+- **Outbound links** open in a new tab with `rel="noopener noreferrer"`, so a message can't re-navigate the local viewer tab.
+- **CSS for markdown elements** scoped to `.msg` — headers, lists, blockquotes, code blocks, tables — all using the existing design tokens so they automatically adapt to light/dark themes.
+
+### Dependency
+- Adds `marked@^18` (~30 KB gzipped) as a viewer runtime dep. No new build-time deps.
+
+### Notes
+- Existing installs update via `/plugin marketplace update kin-cli && /reload-plugins`.
+
 ## v1.1.1 — 2026-05-13
 
 Patch — viewer light mode toggle.

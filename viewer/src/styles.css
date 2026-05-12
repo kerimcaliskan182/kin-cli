@@ -974,3 +974,104 @@ input, textarea {
   font-size: 11px;
   color: #ef476f;
 }
+
+/* =================== markdown inside .msg (v1.1.2) =================== */
+
+.msg p {
+  margin: 0 0 6px 0;
+}
+.msg p:last-child {
+  margin-bottom: 0;
+}
+
+.msg h1,
+.msg h2,
+.msg h3,
+.msg h4 {
+  font-family: var(--font-sans);
+  color: var(--fg-0);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 8px 0 6px 0;
+}
+.msg h1 { font-size: 18px; }
+.msg h2 { font-size: 16px; }
+.msg h3 { font-size: 14.5px; }
+.msg h4 { font-size: 13.5px; color: var(--fg-1); }
+
+.msg strong { color: var(--fg-0); font-weight: 600; }
+.msg em { color: var(--fg-0); font-style: italic; }
+.msg del { color: var(--fg-2); text-decoration: line-through; }
+
+.msg a {
+  color: var(--accent-text);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 255, 163, 0.25);
+  transition: border-color 120ms ease;
+}
+.msg a:hover {
+  border-bottom-color: var(--accent);
+}
+
+.msg ul,
+.msg ol {
+  margin: 4px 0 6px 0;
+  padding-left: 22px;
+}
+.msg ul li,
+.msg ol li {
+  margin: 2px 0;
+  line-height: 1.5;
+}
+.msg ul { list-style: disc; }
+.msg ol { list-style: decimal; }
+
+.msg blockquote {
+  margin: 6px 0;
+  padding: 4px 0 4px 10px;
+  border-left: 2px solid var(--quote-bar);
+  color: var(--fg-1);
+  font-style: italic;
+}
+.msg blockquote p { margin: 0; }
+
+.msg pre {
+  margin: 6px 0;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.msg pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  color: var(--fg-0);
+}
+
+.msg hr {
+  border: 0;
+  border-top: 1px solid var(--border-1);
+  margin: 10px 0;
+}
+
+.msg table {
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+.msg th,
+.msg td {
+  border: 1px solid var(--border-1);
+  padding: 4px 8px;
+  text-align: left;
+}
+.msg th {
+  background: var(--bg-2);
+  font-weight: 600;
+  color: var(--fg-0);
+}
