@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.6 — 2026-05-13
+
+Patch — composer recipient persists across reloads (Oğuzhan: "ben buna bakmıyorum ki").
+
+### Changed
+- **Last-selected recipient is remembered.** The composer's `to:` dropdown now persists in `localStorage` under `kin.viewer.composer_to`. On reload — or when the SSE stream re-establishes — the dropdown stays on the kin you were about to message instead of silently snapping back to `kin[0]`. Priority resolves: DM-mode lock → stored recipient (if still in workspace) → first kin in list.
+
+### Notes
+- Update path: `/plugin marketplace update kin-cli && /reload-plugins`.
+- The stored value is gracefully ignored if the kin disappears from the workspace (gets renamed / removed); falls back to the first available kin.
+
 ## v1.1.5 — 2026-05-13
 
 Patch — composer send-on-Ctrl-Enter (Oğuzhan feedback).

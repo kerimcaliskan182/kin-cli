@@ -11,6 +11,7 @@ import { KIN_DATA } from "./data.js";
 
 const ME_STORAGE_KEY = "kin.viewer.me";
 const THEME_STORAGE_KEY = "kin.viewer.theme";
+const COMPOSER_TO_STORAGE_KEY = "kin.viewer.composer_to";
 
 // Subscribes to /api/stream and returns { kin, messages, now } that update
 // live as the server detects filesystem changes. Falls back to the bundled
@@ -416,7 +417,20 @@ function ClaimBanner({ onClaim }) {
 // ---- composer: send a message ----
 function Composer({ me, kin, onSend, lockedTo }) {
   const [text, setText] = useState("");
-  const [to, setTo] = useState(lockedTo || kin[0]?.id || "");
+  // Initial recipient resolution priority:
+  //   1. DM-mode lock (from sidebar click)
+  //   2. last-used recipient from localStorage (Oğuzhan: "ben buna
+  //      bakmıyorum ki" — reloading the viewer no longer silently
+  //      moves your default recipient to alphabetically-first kin)
+  //   3. first kin in the list as a final fallback
+  const [to, setTo] = useState(() => {
+    if (lockedTo) return lockedTo;
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(COMPOSER_TO_STORAGE_KEY);
+      if (stored && kin.find((k) => k.id === stored)) return stored;
+    }
+    return kin[0]?.id || "";
+  });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const textareaRef = useRef(null);
@@ -425,6 +439,14 @@ function Composer({ me, kin, onSend, lockedTo }) {
   useEffect(() => {
     if (lockedTo) setTo(lockedTo);
   }, [lockedTo]);
+
+  // persist the last selected recipient so reload doesn't silently
+  // redirect a half-typed message to a different kin
+  useEffect(() => {
+    if (to && typeof window !== "undefined") {
+      window.localStorage.setItem(COMPOSER_TO_STORAGE_KEY, to);
+    }
+  }, [to]);
 
   // keep `to` valid as kin list changes
   useEffect(() => {
