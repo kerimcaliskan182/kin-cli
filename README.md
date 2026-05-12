@@ -4,11 +4,10 @@
 
 **v1.0.0 — public release.** MIT, BYOK, no telemetry, no backend.
 
-<video src="docs/demo.mp4" controls muted loop playsinline width="100%">
-  Your browser doesn't support inline video — <a href="docs/demo.mp4">view the demo</a>.
-</video>
+[![kin v1.0.0 — 20 second demo, click to play](docs/demo-poster.png)](docs/demo.mp4)
 
-> 📋 **First time here?** The 20-second video above is the whole pitch. For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
+> 🎬 **[▶ Watch the 20-second demo](docs/demo.mp4)** — this is the whole pitch.
+> For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
 
 ## What it is
 
