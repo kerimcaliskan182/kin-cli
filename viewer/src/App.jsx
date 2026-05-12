@@ -10,6 +10,7 @@ import {
 import { KIN_DATA } from "./data.js";
 
 const ME_STORAGE_KEY = "kin.viewer.me";
+const THEME_STORAGE_KEY = "kin.viewer.theme";
 
 // Subscribes to /api/stream and returns { kin, messages, now } that update
 // live as the server detects filesystem changes. Falls back to the bundled
@@ -58,6 +59,25 @@ export function App() {
     if (typeof window === "undefined") return null;
     return window.localStorage.getItem(ME_STORAGE_KEY);
   });
+
+  // Theme preference (dark/light), persisted in localStorage. The CSS tokens
+  // are already defined for both modes in styles.css; we just flip the
+  // data-theme attribute on <html>.
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "dark";
+    return window.localStorage.getItem(THEME_STORAGE_KEY) || "dark";
+  });
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(
+    () => setTheme((t) => (t === "dark" ? "light" : "dark")),
+    []
+  );
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
@@ -137,6 +157,8 @@ export function App() {
             setSearch={setSearch}
             rightOpen={rightOpen}
             onToggleRight={() => setRightPanelOpen((v) => !v)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
             disabled
           />
           <EmptyState />
@@ -152,6 +174,8 @@ export function App() {
             setSearch={setSearch}
             rightOpen={rightOpen}
             onToggleRight={() => setRightPanelOpen((v) => !v)}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
           <FilterChips
             kin={kin}
@@ -193,6 +217,8 @@ function Topbar({
   setSearch,
   rightOpen,
   onToggleRight,
+  theme,
+  onToggleTheme,
   disabled,
 }) {
   return (
@@ -223,6 +249,13 @@ function Topbar({
         />
         <span className="kbd">⌘K</span>
       </div>
+      <button
+        className="icon-btn"
+        title={theme === "dark" ? "switch to light theme" : "switch to dark theme"}
+        onClick={onToggleTheme}
+      >
+        {theme === "dark" ? <Icon.Sun /> : <Icon.Moon />}
+      </button>
       <button
         className="icon-btn"
         data-active={rightOpen ? "true" : "false"}

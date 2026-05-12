@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.1 — 2026-05-13
+
+Patch — viewer light mode toggle.
+
+### Added
+- **Theme toggle** in the viewer topbar (sun ↔ moon icon button). Switches between dark (default) and light themes. Preference persists in `localStorage` under `kin.viewer.theme`, so reload remembers your choice. CSS tokens for both themes were already defined in `styles.css`; this commit wires them to a user-controlled switch.
+
+### Notes
+- No backend / API changes. Bumps the package + plugin + marketplace + MCP-server version strings from 1.1.0 → 1.1.1.
+- Existing installs update via `/plugin marketplace update kin-cli && /reload-plugins` (no clone refresh needed).
+
 ## v1.1.0 — 2026-05-13
 
 The "watch kin talk to each other in a real browser — and join the conversation yourself" release.
