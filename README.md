@@ -4,10 +4,9 @@
 
 **v1.0.0 — public release.** MIT, BYOK, no telemetry, no backend.
 
-[![kin v1.0.0 — 20 second demo, click to play](docs/demo-poster.png)](docs/demo.mp4)
+![kin v1.0.0 — 20 second demo](docs/demo.gif)
 
-> 🎬 **[▶ Watch the 20-second demo](docs/demo.mp4)** — this is the whole pitch.
-> For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total.
+> 📋 **First time here?** The 20-second demo above is the whole pitch. For a hands-on tour, jump to **[TESTING.md](TESTING.md)** — three short scenarios, ~25 minutes total. Higher-quality MP4 attached to the [v1.0.0 release](https://github.com/kerimcaliskan182/kin-cli/releases/tag/v1.0.0).
 
 ## What it is
 
