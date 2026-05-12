@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.5 — 2026-05-13
+
+Patch — composer send-on-Ctrl-Enter (Oğuzhan feedback).
+
+### Changed
+- **Send keybinding.** Plain `Enter` now inserts a newline (same as a regular textarea). To send, press `Ctrl+Enter` (or `⌘+Enter` on macOS). `Shift+Enter` still inserts a newline. This protects against half-typed accidental sends — the previous Enter-sends behavior had no in-app cancel path once the message was dispatched to the inbox.
+- **Placeholder updated** to reflect the new keybinding: `message kuzgun…  (Ctrl+Enter / ⌘+Enter to send · Enter for newline)`.
+
+### Notes
+- Update path: `/plugin marketplace update kin-cli && /reload-plugins`.
+
 ## v1.1.4 — 2026-05-13
 
 Patch — composer textarea, recipient on every message header, smarter typing indicator (Oğuzhan feedback round 2).

@@ -493,7 +493,7 @@ function Composer({ me, kin, onSend, lockedTo }) {
         placeholder={
           noKin
             ? "claim a kin to start the conversation"
-            : `message ${to || "kin"}…  (Enter to send · Shift+Enter for newline)`
+            : `message ${to || "kin"}…  (Ctrl+Enter / ⌘+Enter to send · Enter for newline)`
         }
         value={text}
         onChange={(e) => {
@@ -501,7 +501,11 @@ function Composer({ me, kin, onSend, lockedTo }) {
           setErr("");
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+          // Ctrl+Enter (or ⌘+Enter on macOS) sends. Plain Enter and
+          // Shift+Enter both insert newlines — same as a regular textarea.
+          // This protects against half-typed accidental sends, which had
+          // no in-app cancel path.
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
             submit(e);
           }

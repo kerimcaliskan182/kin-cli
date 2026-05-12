@@ -161,7 +161,7 @@ export function Sidebar({ kin, selectedId, onSelect, unreadByKin }) {
         <span className="brand-mark">
           kin<span className="dot">.</span>
         </span>
-        <span className="brand-meta">v1.1.4</span>
+        <span className="brand-meta">v1.1.5</span>
       </div>
 
       <div className="workspace">
