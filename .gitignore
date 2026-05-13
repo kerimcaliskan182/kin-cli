@@ -21,3 +21,6 @@ test-output/
 .env
 .env.local
 .env.*.local
+
+# Local-only working notes (session handoffs, scratch scripts)
+.brain/
